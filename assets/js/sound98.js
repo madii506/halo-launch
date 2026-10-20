@@ -29,8 +29,8 @@ export function createSound(store) {
     try { ctx = new AC(); } catch { return false; }
     master = ctx.createGain(); master.gain.value = muted ? 0 : vol;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3; master.connect(comp).connect(ctx.destination);
-    verb = ctx.createConvolver(); verb.buffer = impulse(3.4, 2.6); const vg = ctx.createGain(); vg.gain.value = .3; verb.connect(vg).connect(master);
-    echo = ctx.createDelay(1.5); echo.delayTime.value = BEAT * .75; const fb = ctx.createGain(); fb.gain.value = .32; const eg = ctx.createGain(); eg.gain.value = .35;
+    verb = ctx.createConvolver(); verb.buffer = impulse(2.2, 3.2); const vg = ctx.createGain(); vg.gain.value = .14; verb.connect(vg).connect(master);
+    echo = ctx.createDelay(1.5); echo.delayTime.value = BEAT * .75; const fb = ctx.createGain(); fb.gain.value = .18; const eg = ctx.createGain(); eg.gain.value = .16;
     echo.connect(fb).connect(echo); echo.connect(eg).connect(master);
     musicBus = ctx.createGain(); musicBus.gain.value = 0; musicBus.connect(master); musicBus.connect(verb);
     sfxBus = ctx.createGain(); sfxBus.gain.value = .9; sfxBus.connect(master); sfxBus.connect(verb);
@@ -40,9 +40,9 @@ export function createSound(store) {
   // ---------------------------------------------------------------- instruments
   const env = (g, t, a, peak, d, sus, r, end) => { g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.setTargetAtTime(sus, t + a, d); g.gain.setTargetAtTime(0, end, r); };
   function pad(notes, t, len, level) {
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(520, t); lp.frequency.linearRampToValueAtTime(980, t + len * .5); lp.frequency.linearRampToValueAtTime(600, t + len); lp.Q.value = .4;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1500; lp.Q.value = .3;
     const g = ctx.createGain(); env(g, t, 1.6, level, 1.5, level * .85, .9, t + len); lp.connect(g).connect(musicBus);
-    notes.forEach(m => [-7, 7].forEach(cents => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz(m); o.detune.value = cents + (rnd() - .5) * 4; const og = ctx.createGain(); og.gain.value = .11; o.connect(og).connect(lp); o.start(t); o.stop(t + len + 4); }));
+    notes.forEach(m => [-3, 3].forEach(cents => { const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = hz(m); o.detune.value = cents; const og = ctx.createGain(); og.gain.value = .16; o.connect(og).connect(lp); o.start(t); o.stop(t + len + 4); }));
   }
   function pluck(m, t, level) {
     const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(level, t + .006); g.gain.exponentialRampToValueAtTime(.0005, t + 1.6);
@@ -72,9 +72,6 @@ export function createSound(store) {
       if (s16 % 2 === 0) { const p = desk ? .34 : .2; if (rnd() < p) pluck(ch.arp[Math.floor(rnd() * ch.arp.length)], t + (rnd() - .5) * .02, desk ? .05 : .045); }
       if (desk) {
         if (s16 === 0 || (s16 === 10 && rnd() < .55)) kick(t, .2);
-        if (s16 === 8) noise(t, .16, 'bandpass', 1800, .9, .045);               // a soft, brushed snare
-        if (s16 % 4 === 2) noise(t, .045, 'highpass', 7500, .7, rnd() < .3 ? .03 : .018);
-        if (rnd() < .12) noise(t + rnd() * .1, .012, 'highpass', 3000, .5, .02); // vinyl crackle
       }
       nextT += BEAT / 4; step++;
     }
@@ -92,28 +89,26 @@ export function createSound(store) {
   function startMusic() {
     if (timer) return;
     nextT = ctx.currentTime + .15; step = 0;
-    musicBus.gain.cancelScheduledValues(ctx.currentTime); musicBus.gain.setValueAtTime(musicBus.gain.value, ctx.currentTime); musicBus.gain.linearRampToValueAtTime(scene === 'desk' ? .62 : .8, ctx.currentTime + 3);
-    timer = setInterval(schedule, 60); schedule(); startRain();
+    musicBus.gain.cancelScheduledValues(ctx.currentTime); musicBus.gain.setValueAtTime(musicBus.gain.value, ctx.currentTime); musicBus.gain.linearRampToValueAtTime(scene === 'desk' ? .44 : .55, ctx.currentTime + 3);
+    timer = setInterval(schedule, 60); schedule();
   }
   // ---------------------------------------------------------------- the room's noises
   const SFX = {
     beep: t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'square'; o.frequency.value = 988; g.gain.setValueAtTime(.05, t); g.gain.setValueAtTime(0, t + .13); o.connect(g).connect(sfxBus); o.start(t); o.stop(t + .15); },
-    power: t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(38, t + .3); g.gain.setValueAtTime(.32, t); g.gain.exponentialRampToValueAtTime(.001, t + .45); o.connect(g).connect(sfxBus); o.start(t); o.stop(t + .5);
-      noise(t, .5, 'bandpass', 900, .6, .07, sfxBus); const w = ctx.createOscillator(), wg = ctx.createGain(); w.frequency.value = 7800; wg.gain.setValueAtTime(0, t); wg.gain.linearRampToValueAtTime(.006, t + .4); wg.gain.linearRampToValueAtTime(0, t + 2.2); w.connect(wg).connect(sfxBus); w.start(t); w.stop(t + 2.3); },
+    power: t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(38, t + .3); g.gain.setValueAtTime(.28, t); g.gain.exponentialRampToValueAtTime(.001, t + .45); o.connect(g).connect(sfxBus); o.start(t); o.stop(t + .5); },
     click: t => { noise(t, .025, 'bandpass', 2400, 1.2, .16, sfxBus); noise(t + .05, .02, 'bandpass', 1600, 1.2, .08, sfxBus); },
-    hdd: t => { for (let i = 0; i < 4; i++) noise(t + i * (.03 + rnd() * .04), .012, 'bandpass', 3200 + rnd() * 1500, 2, .035, sfxBus); },
+    hdd: t => { for (let i = 0; i < 3; i++) noise(t + i * (.03 + rnd() * .04), .008, 'bandpass', 3400 + rnd() * 1200, 3, .02, sfxBus); },
     key: t => { noise(t, .035, 'bandpass', 2600 + rnd() * 900, 1.4, .09, sfxBus); const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 150 + rnd() * 40; g.gain.setValueAtTime(.06, t); g.gain.exponentialRampToValueAtTime(.001, t + .06); o.connect(g).connect(sfxBus); o.start(t); o.stop(t + .07); },
-    thunder: (t, k = 1) => { const g = noise(t + .5, 3.6, 'lowpass', 150, .7, .34 * k, sfxBus); g.gain.setValueAtTime(.001, t + .5); g.gain.linearRampToValueAtTime(.34 * k, t + .9); g.gain.exponentialRampToValueAtTime(.0005, t + 4.2); noise(t + .55, 1.1, 'lowpass', 600, .5, .08 * k, sfxBus); },
-    dive: t => { const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(220, t); f.frequency.exponentialRampToValueAtTime(5200, t + 1.9);
-      const g = ctx.createGain(); g.gain.setValueAtTime(.001, t); g.gain.exponentialRampToValueAtTime(.2, t + 1.7); g.gain.exponentialRampToValueAtTime(.001, t + 2.3); s.connect(f).connect(g).connect(sfxBus); s.start(t); s.stop(t + 2.4);
-      const o = ctx.createOscillator(), og = ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(880, t + 1.9); og.gain.setValueAtTime(.001, t); og.gain.exponentialRampToValueAtTime(.07, t + 1.7); og.gain.exponentialRampToValueAtTime(.001, t + 2.2); o.connect(og).connect(sfxBus); o.start(t); o.stop(t + 2.3); },
+    thunder: () => {},
+    dive: t => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(880, t + 1.9); og.gain.setValueAtTime(.001, t); og.gain.exponentialRampToValueAtTime(.08, t + 1.6); og.gain.exponentialRampToValueAtTime(.001, t + 2.1); o.connect(og).connect(sfxBus); o.start(t); o.stop(t + 2.2);
+      const o2 = ctx.createOscillator(), g2 = ctx.createGain(); o2.type = 'triangle'; o2.frequency.setValueAtTime(220, t); o2.frequency.exponentialRampToValueAtTime(1760, t + 1.9); g2.gain.setValueAtTime(.001, t); g2.gain.exponentialRampToValueAtTime(.03, t + 1.6); g2.gain.exponentialRampToValueAtTime(.001, t + 2.1); o2.connect(g2).connect(sfxBus); o2.start(t); o2.stop(t + 2.2); },
     chime: t => { [62, 69, 74, 78, 81, 86].forEach((m, i) => { const at = t + i * .085, o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o2.type = 'triangle'; o.frequency.value = hz(m); o2.frequency.value = hz(m) * 2.01;
       g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(.07, at + .01); g.gain.exponentialRampToValueAtTime(.0005, at + 2.6); const g2 = ctx.createGain(); g2.gain.value = .25; o.connect(g); o2.connect(g2).connect(g); g.connect(sfxBus); o.start(at); o2.start(at); o.stop(at + 2.7); o2.stop(at + 2.7); }); },
     open: t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(660, t); o.frequency.exponentialRampToValueAtTime(990, t + .06); g.gain.setValueAtTime(.035, t); g.gain.exponentialRampToValueAtTime(.0005, t + .12); o.connect(g).connect(sfxBus); o.start(t); o.stop(t + .14); },
     close: t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(560, t); o.frequency.exponentialRampToValueAtTime(380, t + .07); g.gain.setValueAtTime(.03, t); g.gain.exponentialRampToValueAtTime(.0005, t + .12); o.connect(g).connect(sfxBus); o.start(t); o.stop(t + .14); },
     ding: t => { [76, 71].forEach((m, i) => { const at = t + i * .14, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = hz(m); g.gain.setValueAtTime(.06, at); g.gain.exponentialRampToValueAtTime(.0005, at + .9); o.connect(g).connect(sfxBus); o.start(at); o.stop(at + 1); }); },
     tick: t => { noise(t, .02, 'highpass', 4000, .7, .05, sfxBus); },
-    boom: t => { noise(t, .9, 'lowpass', 300, .6, .25, sfxBus); },
+    boom: t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(40, t + .5); g.gain.setValueAtTime(.25, t); g.gain.exponentialRampToValueAtTime(.001, t + .6); o.connect(g).connect(sfxBus); o.start(t); o.stop(t + .65); },
   };
   let lastSfx = {};
   return {
@@ -121,7 +116,7 @@ export function createSound(store) {
     scene(name) {
       scene = name; if (!ctx) return;
       const t = ctx.currentTime;
-      musicBus.gain.cancelScheduledValues(t); musicBus.gain.setValueAtTime(musicBus.gain.value, t); musicBus.gain.linearRampToValueAtTime(name === 'desk' ? .62 : .8, t + 2.5);
+      musicBus.gain.cancelScheduledValues(t); musicBus.gain.setValueAtTime(musicBus.gain.value, t); musicBus.gain.linearRampToValueAtTime(name === 'desk' ? .44 : .55, t + 2.5);
       if (rain) rain.g.gain.setTargetAtTime(name === 'intro' ? .07 : .016, t, 1.6);
     },
     sfx(name, arg) {

@@ -1,6 +1,6 @@
 // HALO 98: the room, the boot on the CRT, then a dark old-school desktop where every window works.
 import { install } from './apps98.js?v=1';
-import { createSound } from './sound98.js?v=1';
+import { createSound } from './sound98.js?v=2';
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MOBILE = matchMedia('(max-width: 760px)').matches || matchMedia('(hover: none)').matches;
