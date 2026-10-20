@@ -16,7 +16,8 @@ export function createSound(store) {
   let step = 0, nextT = 0, seed = 7;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const listeners = new Set();
-  const emit = () => listeners.forEach(f => f({ muted, vol, on: !!ctx && started }));
+  const running = () => !!ctx && started && ctx.state === 'running';
+  const emit = () => listeners.forEach(f => f({ muted, vol, on: running() }));
 
   function impulse(sec, decay) {
     const n = Math.floor(ctx.sampleRate * sec), b = ctx.createBuffer(2, n, ctx.sampleRate);
@@ -27,6 +28,7 @@ export function createSound(store) {
     if (ctx) return true;
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
     try { ctx = new AC(); } catch { return false; }
+    ctx.onstatechange = () => emit();
     master = ctx.createGain(); master.gain.value = muted ? 0 : vol;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3; master.connect(comp).connect(ctx.destination);
     verb = ctx.createConvolver(); verb.buffer = impulse(2.2, 3.2); const vg = ctx.createGain(); vg.gain.value = .14; verb.connect(vg).connect(master);
@@ -112,7 +114,9 @@ export function createSound(store) {
   };
   let lastSfx = {};
   return {
-    unlock() { if (!init()) return; if (ctx.state === 'suspended') ctx.resume(); if (!started) { started = true; startMusic(); emit(); } },
+    unlock() { if (!init()) return; if (ctx.state === 'suspended') ctx.resume().then(emit, () => {}); if (!started) { started = true; startMusic(); emit(); } },
+    // the off button: if the browser is still holding the sound back, a press means "play"; otherwise it mutes or unmutes
+    toggle() { if (!running()) { this.unlock(); if (muted) this.setMuted(false); return; } this.setMuted(!muted); },
     scene(name) {
       scene = name; if (!ctx) return;
       const t = ctx.currentTime;
@@ -126,7 +130,7 @@ export function createSound(store) {
     },
     setMuted(v) { muted = !!v; try { store.set('halo:mute', muted ? '1' : '0'); } catch {} if (ctx) { const t = ctx.currentTime; master.gain.cancelScheduledValues(t); master.gain.setTargetAtTime(muted ? 0 : vol, t, .08); } emit(); },
     setVolume(v) { vol = Math.max(0, Math.min(1, v)); try { store.set('halo:vol', String(vol)); } catch {} if (ctx && !muted) master.gain.setTargetAtTime(vol, ctx.currentTime, .05); emit(); },
-    get muted() { return muted; }, get volume() { return vol; }, get on() { return !!ctx && started; },
-    onChange(f) { listeners.add(f); f({ muted, vol, on: !!ctx && started }); return () => listeners.delete(f); },
+    get muted() { return muted; }, get volume() { return vol; }, get on() { return running(); },
+    onChange(f) { listeners.add(f); f({ muted, vol, on: running() }); return () => listeners.delete(f); },
   };
 }

@@ -1,6 +1,6 @@
 // HALO 98: the room, the boot on the CRT, then a dark old-school desktop where every window works.
 import { install } from './apps98.js?v=1';
-import { createSound } from './sound98.js?v=2';
+import { createSound } from './sound98.js?v=3';
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MOBILE = matchMedia('(max-width: 760px)').matches || matchMedia('(hover: none)').matches;
@@ -9,8 +9,10 @@ const ss = { get(k) { try { return sessionStorage.getItem(k); } catch { return n
 const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 // sound: browsers only allow it after a click or a key, so the first one anywhere starts the music
 const SOUND = createSound(ls);
-const unlockOnce = () => { SOUND.unlock(); removeEventListener('pointerdown', unlockOnce, true); removeEventListener('keydown', unlockOnce, true); };
-addEventListener('pointerdown', unlockOnce, true); addEventListener('keydown', unlockOnce, true);
+// sound plays on its own wherever the browser allows it; where it doesn't, the very first click or key starts it
+SOUND.unlock();
+const unlockOnce = () => { SOUND.unlock(); if (SOUND.on) ['pointerdown', 'keydown', 'touchend'].forEach(t => removeEventListener(t, unlockOnce, true)); };
+['pointerdown', 'keydown', 'touchend'].forEach(t => addEventListener(t, unlockOnce, true));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const short = a => a ? a.slice(0, 4) + '…' + a.slice(-4) : '';
 const ago = t => { const s = Math.max(1, (Date.now() - new Date(t).getTime()) / 1000); return s < 60 ? `${s | 0}s` : s < 3600 ? `${s / 60 | 0}m` : s < 86400 ? `${s / 3600 | 0}h` : `${s / 86400 | 0}d`; };
@@ -46,8 +48,8 @@ async function boot() {
     const { run } = await import('./intro3d.js?v=5');
     const statusP = fetch('/api/status').then(r => r.json()).catch(() => null);
     const sb = $('#isound');
-    if (sb) { SOUND.onChange(st => { const on = st.on && !st.muted; sb.textContent = on ? '♪ sound on' : '♪ sound off'; sb.setAttribute('aria-pressed', String(on)); });
-      sb.onclick = e => { e.stopPropagation(); if (!SOUND.on) { SOUND.unlock(); if (SOUND.muted) SOUND.setMuted(false); } else SOUND.setMuted(!SOUND.muted); }; }
+    if (sb) { SOUND.onChange(st => { sb.textContent = st.muted ? '♪ sound off' : '♪ sound on'; sb.setAttribute('aria-pressed', String(!st.muted)); });
+      sb.onclick = e => { e.stopPropagation(); SOUND.toggle(); }; }
     window.__halo = await run({ canvas, mobile: MOBILE, onEnter: go, status: statusP, audio: SOUND, onReady: () => { $('#ihint').classList.add('on'); $('#itouch').classList.add('on'); } });
     started = true;
     requestAnimationFrame(() => { canvas.classList.add('on'); const l = $('#iload'); if (l) l.remove(); });
@@ -281,8 +283,9 @@ function initDesk() {
     if (i === 0) { $('#shutdown').hidden = false; $('#shutdown').onclick = () => { try { sessionStorage.removeItem('halo:seen'); } catch {} location.reload(); }; }
     if (i === 1) { try { sessionStorage.removeItem('halo:seen'); } catch {} location.reload(); } };
   const vp = $('#volPop'), vr = $('#volRange'), vm = $('#volMute'), ts = $('#traySnd');
-  SOUND.onChange(st => { vr.value = Math.round(st.vol * 100); vm.checked = st.muted; ts.textContent = st.muted || !st.on ? '♪̸' : '♪'; ts.classList.toggle('off', st.muted || !st.on); });
+  SOUND.onChange(st => { vr.value = Math.round(st.vol * 100); vm.checked = st.muted; ts.textContent = st.muted ? '♪̸' : '♪'; ts.classList.toggle('off', st.muted); });
   ts.onclick = e => { e.stopPropagation(); const open = vp.hidden; closeMenus(); vp.hidden = !open; SOUND.unlock(); };
+  ts.addEventListener('dblclick', e => { e.stopPropagation(); SOUND.toggle(); });
   vr.oninput = () => { SOUND.setVolume(vr.value / 100); if (SOUND.muted && vr.value > 0) SOUND.setMuted(false); };
   vm.onchange = () => SOUND.setMuted(vm.checked);
   const tick = () => { const d = new Date(); $('#clock').textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
@@ -306,11 +309,8 @@ const WHY = { treasury: 'the treasury is empty right now. launches open again wh
 async function status() {
   try { STATUS = await api('status'); } catch { STATUS = null; }
   const s = STATUS;
-  if (!s) { $('#trayDot').className = 'dot off'; $('#trayTxt').textContent = 'offline'; return; }
+  if (!s) return;
   const left = Math.max(0, Math.min(s.cap - s.today, s.launchesLeft == null ? s.cap : s.launchesLeft));
-  $('#trayDot').className = 'dot ' + (s.ready ? 'live' : 'off');
-  $('#trayTxt').textContent = s.ready ? 'launches open' : 'launches paused';
-  $('#tray').title = `treasury ${s.treasurySol == null ? '—' : s.treasurySol} SOL`;
   $('#freeLeft').innerHTML = s.ready ? '<span class="teal">●</span> launches open' : `<span class="gold">●</span> ${esc(WHY[s.why] || 'launches are paused.')}`;
   $('#welcomeState').innerHTML = s.ready ? '<span class="dot live"></span><span>launches open</span>' : '<span class="dot off"></span><span>launches paused for now</span>';
   $('#sysLive').innerHTML = `network: <b>${esc(s.network)}</b><br>launches: <b>${s.ready ? 'open' : 'paused'}</b>` + (s.ca ? `<br>$HALO: <b class="gold">${esc(s.ca)}</b>` : '');
