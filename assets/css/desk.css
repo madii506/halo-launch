@@ -36,9 +36,19 @@ kbd { font: 600 11px var(--mono); border: 1px solid var(--hi); border-bottom-wid
 .itouch button:first-child { background: var(--gold); color: #000; border-color: var(--gold); }
 .ifall { position: absolute; inset: 0; margin: 0; padding: 12vh 8vw; font: 400 15px/1.5 var(--mono); color: var(--ink); white-space: pre-wrap; }
 .iflash { position: absolute; inset: 0; background: #e8fff6; opacity: 0; pointer-events: none; }
+.lb { position: absolute; left: 0; right: 0; height: 10.5vh; background: #000; z-index: 3; transition: transform 1.3s cubic-bezier(.7,0,.2,1); pointer-events: none; }
+.lb.top { top: 0; } .lb.bot { bottom: 0; }
+#intro.ready .lb.top { transform: translateY(-101%); } #intro.ready .lb.bot { transform: translateY(101%); }
+.icap { position: absolute; left: 4vw; bottom: calc(5.25vh - 9px); z-index: 4; font: 400 13px/18px var(--mono); color: #d8d1bd; letter-spacing: .05em; opacity: 0; transition: opacity .5s; pointer-events: none; white-space: nowrap; }
+.icap.on { opacity: 1; } .icap::after { content: ''; display: inline-block; width: 8px; height: 13px; margin-left: 3px; vertical-align: -2px; background: var(--gold); animation: capb 1s steps(1) infinite; }
+@keyframes capb { 50% { opacity: 0; } }
+.iskip { position: absolute; right: 3.2vw; top: calc(5.25vh - 15px); z-index: 4; background: none; border: 1px solid #2c2c33; color: #9a958a; font: 500 12px var(--mono); padding: 6px 12px; cursor: pointer; transition: opacity .6s, color .2s, border-color .2s; }
+.iskip:hover { color: var(--gold); border-color: var(--gold); }
+#intro.ready .iskip, #intro.diving .ihint, #intro.diving .itouch { opacity: 0 !important; pointer-events: none; }
+.iload { position: absolute; inset: 0; display: grid; place-items: center; z-index: 2; color: var(--gold); font: 400 30px var(--vt); animation: capb 1s steps(1) infinite; }
 .iflash.go { animation: flash 900ms ease forwards; }
 @keyframes flash { 0% { opacity: 0; } 35% { opacity: 1; } 100% { opacity: 0; } }
-@media (hover: none), (max-width: 760px) { .ihint { display: none; } .itouch { display: flex; } }
+@media (hover: none), (max-width: 760px) { .ihint { display: none; } .itouch { display: flex; } .icap { white-space: normal; right: 4vw; font-size: 11.5px; line-height: 16px; bottom: calc(5.25vh - 16px); } }
 
 /* ---------------------------------------------------------------- splash */
 #splash { position: fixed; inset: 0; z-index: 90; background: #000; display: grid; place-content: center; gap: 26px; justify-items: center; }
