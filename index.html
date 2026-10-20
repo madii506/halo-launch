@@ -29,7 +29,7 @@
   <div class="lb top" aria-hidden="true"></div><div class="lb bot" aria-hidden="true"></div>
   <div class="icap" id="icap" aria-live="polite"></div>
   <button class="iskip" id="iskip" type="button">skip ›</button>
-  <button class="isound" id="isound" type="button" aria-pressed="false">♪ sound off</button>
+  <button class="isound" id="isound" type="button" aria-pressed="true">♪ sound on</button>
   <div class="iload" id="iload" aria-hidden="true">_</div>
   <div class="ihint" id="ihint"><span>click the screen or press <kbd>enter</kbd> to go in</span><span>type <b>help</b> for commands</span></div>
   <div class="itouch" id="itouch"><button type="button" data-go="">enter halo ↵</button><button type="button" data-go="launch">launch</button><button type="button" data-go="coins">coins</button><button type="button" data-go="claim">claim</button></div>
@@ -338,7 +338,7 @@
     <button class="startbtn" id="startBtn" type="button" aria-expanded="false"><img src="/assets/img/ico-pc-16.png" alt="">start</button>
     <div class="ql" aria-label="quick launch"><button type="button" data-open="launch" data-tip="launch a coin"><img src="/assets/img/ico-launch-16.png" alt=""></button><button type="button" data-open="coins" data-tip="coins.db"><img src="/assets/img/ico-coins-16.png" alt=""></button><button type="button" data-open="paint" data-tip="paint"><img src="/assets/img/ico-paint-16.png" alt=""></button><button type="button" data-open="cmd" data-tip="command prompt"><img src="/assets/img/ico-cmd-16.png" alt=""></button></div>
     <div class="tasks" id="tasks"></div>
-    <div class="tray" id="tray"><span class="dot" id="trayDot"></span><span id="trayTxt">…</span><button class="snd" type="button" id="traySnd" data-tip="sound" aria-label="sound">♪</button><span class="clock" id="clock" data-tip="date and time">--:--</span></div>
+    <div class="tray" id="tray"><button class="snd" type="button" id="traySnd" data-tip="sound" aria-label="sound">♪</button><span class="clock" id="clock" data-tip="date and time">--:--</span></div>
   </footer>
 </div>
 
@@ -350,6 +350,6 @@
 <div class="zoomr" id="zoomr" aria-hidden="true"></div>
 
 <script src="/assets/js/vendor/nacl-fast.min.js"></script>
-<script type="module" src="/assets/js/desk.js?v=4"></script>
+<script type="module" src="/assets/js/desk.js?v=6"></script>
 </body>
 </html>
