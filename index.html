@@ -14,12 +14,12 @@
 <meta name="twitter:title" content="HALO">
 <meta name="twitter:description" content="launch with layers of privacy. every one of them real.">
 <meta name="twitter:image" content="/assets/img/og.jpg">
-<link rel="icon" type="image/png" sizes="64x64" href="/assets/img/icon-64.png?v=2">
-<link rel="icon" type="image/png" sizes="32x32" href="/assets/img/icon-32.png?v=2">
-<link rel="apple-touch-icon" href="/assets/img/icon-180.png?v=2">
+<link rel="icon" type="image/png" sizes="64x64" href="/assets/img/icon-64.png?v=3">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/img/icon-32.png?v=3">
+<link rel="apple-touch-icon" href="/assets/img/icon-180.png?v=3">
 <link rel="preload" href="/assets/fonts/VT323-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/JetBrainsMono.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/desk.css?v=3">
+<link rel="stylesheet" href="/assets/css/desk.css?v=4">
 </head>
 <body class="booting">
 
@@ -29,8 +29,9 @@
   <div class="lb top" aria-hidden="true"></div><div class="lb bot" aria-hidden="true"></div>
   <div class="icap" id="icap" aria-live="polite"></div>
   <button class="iskip" id="iskip" type="button">skip ›</button>
+  <button class="isound" id="isound" type="button" aria-pressed="false">♪ sound off</button>
   <div class="iload" id="iload" aria-hidden="true">_</div>
-  <div class="ihint" id="ihint"><span>type <b>help</b> for commands</span><span>press <kbd>enter</kbd> to go in</span></div>
+  <div class="ihint" id="ihint"><span>click the screen or press <kbd>enter</kbd> to go in</span><span>type <b>help</b> for commands</span></div>
   <div class="itouch" id="itouch"><button type="button" data-go="">enter halo ↵</button><button type="button" data-go="launch">launch</button><button type="button" data-go="coins">coins</button><button type="button" data-go="claim">claim</button></div>
   <pre class="ifall" id="ifall" hidden></pre>
   <div class="iflash" id="iflash"></div>
@@ -51,6 +52,8 @@
     <button class="ic" data-open="privacy" role="listitem"><img src="/assets/img/ico-privacy.png" alt=""><span>privacy.cpl</span></button>
     <button class="ic" data-open="readme" role="listitem"><img src="/assets/img/ico-readme.png" alt=""><span>readme.txt</span></button>
     <button class="ic" data-open="cmd" role="listitem"><img src="/assets/img/ico-cmd.png" alt=""><span>cmd.exe</span></button>
+    <button class="ic" data-open="paint" role="listitem"><img src="/assets/img/ico-paint.png" alt=""><span>paint.exe</span></button>
+    <button class="ic" data-open="sweeper" role="listitem"><img src="/assets/img/ico-sweeper.png" alt=""><span>sweeper.exe</span></button>
     <button class="ic" data-open="bin" role="listitem"><img src="/assets/img/ico-bin.png" alt=""><span>recycle bin</span></button>
     <button class="ic" data-open="x" role="listitem" id="icX" hidden><img src="/assets/img/ico-x.png" alt=""><span>halo on x.url</span></button>
   </div>
@@ -71,8 +74,8 @@
           </div>
         </div>
         <div class="wr">
-          <div class="nos"><span>no wallet connect</span><span>no signature</span><span>no SOL</span></div>
-          <div class="gb"><div class="lg">right now</div><div id="welcomeStatus" class="dim">reading the treasury…</div></div>
+          <div class="nos"><span>no wallet needed</span><span>no signature needed</span><span>no SOL needed</span></div>
+          <div class="wstate" id="welcomeState"><span class="dot"></span><span>…</span></div>
           <label class="cb"><input type="checkbox" id="welcomeShow" checked> show this at startup</label>
         </div>
       </div>
@@ -83,7 +86,7 @@
       <div class="wb wiz">
         <aside class="wside"><pre id="wizArt" aria-hidden="true"></pre><div class="wsteps" id="rail">
           <div data-s="0" class="on">coin</div><div data-s="1">image</div><div data-s="2">creator key</div><div data-s="3">review</div><div data-s="4">launch</div>
-        </div><div class="wfree" id="freeLeft">free launches left today: …</div></aside>
+        </div><div class="wfree" id="freeLeft">…</div></aside>
         <div class="pane">
           <form class="step on" data-s="0" id="s0" novalidate>
             <h3>the coin</h3><p class="hint">what people will see on pump.fun.</p>
@@ -201,10 +204,10 @@
         <div class="sysr">
           <div class="lg2">system:</div><div>halo 98<br>second edition<br><span class="dim">4.10.1998</span></div>
           <div class="lg2">registered to:</div><div>nobody<br><span class="dim">anonymous @ 33 MHz</span></div>
-          <div class="lg2">live:</div><div id="sysLive" class="dim">reading…</div>
+          <div class="lg2">status:</div><div id="sysLive" class="dim">reading…</div>
         </div>
       </div>
-      <div class="sbar"><span id="sysTre">treasury —</span><button class="mlink" type="button" id="sysCopy">copy treasury address</button></div>
+      <div class="sbar"><span id="sysTre">—</span><span>halo 98 · second edition</span></div>
     </section>
 
     <!-- recycle bin -->
@@ -218,41 +221,135 @@
       </div>
       <div class="sbar"><span>3 object(s) · 0 bytes</span><span>emptied, on purpose</span></div>
     </section>
+
+    <!-- paint.exe -->
+    <section class="w" id="w-paint" data-app="paint" data-title="paint.exe — draw your coin" data-icon="paint" style="--ww:620px;--wh:640px">
+      <div class="menubar"><button class="mlink" type="button" data-pa="new">new</button><button class="mlink" type="button" data-pa="undo">undo</button><button class="mlink" type="button" data-pa="save">save .png</button><span class="grow"></span><span class="dim">32 × 32 pixels · ctrl+z undoes</span></div>
+      <div class="wb paint">
+        <div class="tools" id="ptools">
+          <button type="button" data-tool="pen" class="on" data-tip="pencil">✎</button>
+          <button type="button" data-tool="erase" data-tip="eraser">▱</button>
+          <button type="button" data-tool="fill" data-tip="fill">◩</button>
+          <button type="button" data-tool="pick" data-tip="pick a colour">⌖</button>
+          <button type="button" data-tool="mirror" data-tip="mirror: draw both halves at once">⇋</button>
+        </div>
+        <div class="canvasbox sunk"><canvas id="pcanvas" width="448" height="448" aria-label="drawing canvas"></canvas></div>
+      </div>
+      <div class="palette" id="ppal"><div class="cur sunk" data-tip="current colour"><i id="pfg"></i></div></div>
+      <div class="paintfoot"><span class="hint">right-click erases. when it looks right, send it to the launch wizard.</span><span class="grow"></span><button class="bt def" type="button" id="pUse">use as coin image ›</button></div>
+      <div class="sbar"><span id="pStat">32 × 32 · pencil</span><span id="pPos"></span></div>
+    </section>
+
+    <!-- tracker sweeper -->
+    <section class="w" id="w-sweeper" data-app="sweeper" data-title="tracker sweeper" data-icon="sweeper" style="--ww:268px;--wh:394px">
+      <div class="menubar"><button class="mlink" type="button" data-sw="new">new</button><button class="mlink" type="button" data-sw="b">beginner</button><button class="mlink" type="button" data-sw="i">intermediate</button><button class="mlink" type="button" data-sw="best">best</button></div>
+      <div class="wb sweep">
+        <div class="swhead sunk"><div class="led" id="swLeft">010</div><button class="face" type="button" id="swFace" aria-label="new game">:)</button><div class="led" id="swTime">000</div></div>
+        <div class="swgrid sunk" id="swGrid"></div>
+        <p class="hint">clear the board without hitting a tracker. right-click or hold to flag.</p>
+      </div>
+    </section>
+
+    <!-- display properties -->
+    <section class="w" id="w-display" data-app="display" data-title="display properties" data-icon="display" style="--ww:440px;--wh:560px">
+      <div class="wb props">
+        <div class="tabs" id="dtabs" role="tablist"><button type="button" data-t="bg" class="on">background</button><button type="button" data-t="saver">screen saver</button><button type="button" data-t="look">appearance</button></div>
+        <div class="tabbody sunk-soft dbody">
+          <div class="mon"><div class="mscr"><canvas id="dprev" width="232" height="160"></canvas></div><div class="mneck"></div><div class="mfoot"></div></div>
+          <div class="dpane" data-p="bg">
+            <div class="lg2">wallpaper</div>
+            <label class="cb rad"><input type="radio" name="wall" value="pc"> ascii pc <span class="dim">(live, three.js)</span></label>
+            <label class="cb rad"><input type="radio" name="wall" value="none"> none <span class="dim">(clean and dark)</span></label>
+          </div>
+          <div class="dpane" data-p="saver" hidden>
+            <div class="row"><select class="in sel2" id="dSaver"><option value="layers">layers</option><option value="stars">starfield</option><option value="marquee">marquee (live status)</option><option value="none">(none)</option></select><button class="bt" type="button" id="dTry">preview</button></div>
+            <div class="row">wait <select class="in sel2 short" id="dWait"><option value="1">1</option><option value="3">3</option><option value="5">5</option><option value="10">10</option></select> minutes</div>
+          </div>
+          <div class="dpane" data-p="look" hidden>
+            <div class="lg2">accent</div>
+            <div class="row accents"><button type="button" class="sw" data-acc="amber" data-tip="amber" style="--c:#f2b84b"></button><button type="button" class="sw" data-acc="teal" data-tip="teal" style="--c:#62f0c8"></button><button type="button" class="sw" data-acc="rose" data-tip="rose" style="--c:#ff8a7a"></button><button type="button" class="sw" data-acc="ice" data-tip="ice" style="--c:#9fb8ff"></button><button type="button" class="sw" data-acc="mono" data-tip="mono" style="--c:#d8d2c0"></button></div>
+            <label class="cb"><input type="checkbox" id="dCrt"> crt scanlines</label>
+          </div>
+        </div>
+        <div class="navrow"><span class="grow"></span><button class="bt def" type="button" data-ok>ok</button><button class="bt" type="button" data-close>cancel</button><button class="bt" type="button" data-apply>apply</button></div>
+      </div>
+    </section>
+
+    <!-- coin properties -->
+    <section class="w" id="w-coin" data-app="coin" data-title="coin properties" data-icon="coins" style="--ww:640px;--wh:440px">
+      <div class="wb coinp">
+        <div class="cpl"><pre id="cpAscii" class="cpascii"></pre><img id="cpImg" alt=""></div>
+        <div class="cpr"><div class="cpname" id="cpName"></div><dl class="kv" id="cpKv"></dl>
+          <div class="row"><a class="bt def" id="cpPump" target="_blank" rel="noopener noreferrer">pump.fun ↗</a><a class="bt" id="cpScan" target="_blank" rel="noopener noreferrer">solscan ↗</a><button class="bt" type="button" id="cpFees">check its fees</button></div></div>
+      </div>
+      <div class="sbar"><span id="cpStat"></span><button class="mlink" type="button" id="cpCopy">copy mint</button></div>
+    </section>
+
+    <!-- run -->
+    <section class="w" id="w-run" data-app="run" data-title="run" data-icon="run" style="--ww:430px;--wh:214px">
+      <div class="wb runb"><img src="/assets/img/ico-run.png" alt=""><div><p>type the name of a program, and halo 98 will open it for you.</p>
+        <label class="field"><span>open:</span><input class="in" id="runIn" list="runList" autocomplete="off" spellcheck="false"></label><datalist id="runList"></datalist></div></div>
+      <div class="navrow pad"><span class="grow"></span><button class="bt def" type="button" id="runOk">ok</button><button class="bt" type="button" data-close>cancel</button></div>
+    </section>
   </div>
 
   <div class="menu start" id="startmenu" hidden>
     <div class="band"><span>halo<b>98</b></span></div>
     <div class="items">
-      <button data-open="launch"><img src="/assets/img/ico-launch-16.png" alt="">launch a coin</button>
-      <button data-open="coins"><img src="/assets/img/ico-coins-16.png" alt="">coins</button>
-      <button data-open="claim"><img src="/assets/img/ico-claim-16.png" alt="">claim fees</button>
+      <button type="button" class="sub" data-sub="programs"><img src="/assets/img/ico-launch-16.png" alt="">programs<span class="arr">▸</span></button>
+      <button type="button" class="sub" data-sub="settings"><img src="/assets/img/ico-display-16.png" alt="">settings<span class="arr">▸</span></button>
+      <button type="button" data-open="readme"><img src="/assets/img/ico-readme-16.png" alt="">help</button>
+      <button type="button" data-open="run"><img src="/assets/img/ico-run-16.png" alt="">run…</button>
       <hr>
-      <button data-open="privacy"><img src="/assets/img/ico-privacy-16.png" alt="">privacy properties</button>
-      <button data-open="readme"><img src="/assets/img/ico-readme-16.png" alt="">readme</button>
-      <button data-open="cmd"><img src="/assets/img/ico-cmd-16.png" alt="">command prompt</button>
-      <button data-open="pc"><img src="/assets/img/ico-pc-16.png" alt="">system properties</button>
-      <hr>
-      <button data-open="welcome"><img src="/assets/img/ico-pc-16.png" alt="">welcome</button>
-      <button id="shutBtn"><img src="/assets/img/ico-warn-16.png" alt="">shut down…</button>
+      <button type="button" data-open="welcome"><img src="/assets/img/ico-pc-16.png" alt="">welcome</button>
+      <button type="button" id="shutBtn"><img src="/assets/img/ico-warn-16.png" alt="">shut down…</button>
     </div>
   </div>
+  <div class="menu subm" id="sub-programs" hidden>
+    <button type="button" data-open="launch"><img src="/assets/img/ico-launch-16.png" alt="">launch a coin</button>
+    <button type="button" data-open="coins"><img src="/assets/img/ico-coins-16.png" alt="">coins</button>
+    <button type="button" data-open="claim"><img src="/assets/img/ico-claim-16.png" alt="">claim fees</button>
+    <hr>
+    <button type="button" data-open="paint"><img src="/assets/img/ico-paint-16.png" alt="">paint</button>
+    <button type="button" data-open="sweeper"><img src="/assets/img/ico-sweeper-16.png" alt="">tracker sweeper</button>
+    <button type="button" data-open="cmd"><img src="/assets/img/ico-cmd-16.png" alt="">command prompt</button>
+    <button type="button" data-open="readme"><img src="/assets/img/ico-readme-16.png" alt="">notepad</button>
+  </div>
+  <div class="menu subm" id="sub-settings" hidden>
+    <button type="button" data-open="display"><img src="/assets/img/ico-display-16.png" alt="">display</button>
+    <button type="button" data-open="privacy"><img src="/assets/img/ico-privacy-16.png" alt="">privacy</button>
+    <button type="button" data-open="pc"><img src="/assets/img/ico-pc-16.png" alt="">system</button>
+    <hr>
+    <button type="button" data-act="saver"><img src="/assets/img/ico-display-16.png" alt="">screen saver now</button>
+  </div>
   <div class="menu ctx" id="ctx" hidden>
-    <button data-act="arrange">arrange icons</button><button data-act="refresh">refresh</button><hr><button data-open="launch">new coin…</button><button data-open="pc">properties</button>
+    <button type="button" data-act="arrange">arrange icons</button><button type="button" data-act="refresh">refresh</button><hr><button type="button" data-open="launch">new coin…</button><button type="button" data-open="paint">new drawing…</button><hr><button type="button" data-open="display">properties</button>
+  </div>
+  <div class="menu volpop" id="volPop" hidden>
+    <div class="lg2">volume</div><input type="range" id="volRange" min="0" max="100" aria-label="volume"><label class="cb"><input type="checkbox" id="volMute"> mute</label>
+  </div>
+  <div class="menu clockpop" id="clockPop" hidden>
+    <div class="cpbig" id="cpLocal">--:--:--</div><div class="dim" id="cpDate"></div><hr>
+    <div class="cprow"><span>utc</span><b id="cpUtc">--:--:--</b></div>
   </div>
   <div class="balloon" id="balloon" hidden><button class="bx" type="button" aria-label="close">×</button><b id="balT"></b><span id="balB"></span></div>
 
   <footer class="taskbar">
     <button class="startbtn" id="startBtn" type="button" aria-expanded="false"><img src="/assets/img/ico-pc-16.png" alt="">start</button>
+    <div class="ql" aria-label="quick launch"><button type="button" data-open="launch" data-tip="launch a coin"><img src="/assets/img/ico-launch-16.png" alt=""></button><button type="button" data-open="coins" data-tip="coins.db"><img src="/assets/img/ico-coins-16.png" alt=""></button><button type="button" data-open="paint" data-tip="paint"><img src="/assets/img/ico-paint-16.png" alt=""></button><button type="button" data-open="cmd" data-tip="command prompt"><img src="/assets/img/ico-cmd-16.png" alt=""></button></div>
     <div class="tasks" id="tasks"></div>
-    <div class="tray" id="tray"><span class="dot" id="trayDot"></span><span id="trayTxt">…</span><span class="clock" id="clock">--:--</span></div>
+    <div class="tray" id="tray"><span class="dot" id="trayDot"></span><span id="trayTxt">…</span><button class="snd" type="button" id="traySnd" data-tip="sound" aria-label="sound">♪</button><span class="clock" id="clock" data-tip="date and time">--:--</span></div>
   </footer>
 </div>
 
 <div id="shutdown" hidden><div>it's now safe to turn off<br>your computer.</div><small>click anywhere to restart</small></div>
 <div id="dlg" class="w dlg" hidden role="alertdialog" aria-modal="true"><div class="tb"><span id="dlgT">halo</span><div class="tbb"><button data-x aria-label="close">×</button></div></div><div class="wb dlgb"><img id="dlgI" src="/assets/img/ico-warn.png" alt=""><div id="dlgB"></div></div><div class="navrow" id="dlgA"></div></div>
 <div class="toast" id="toast" role="status"></div>
+<canvas id="saver" hidden aria-hidden="true"></canvas>
+<div class="tip" id="tip" hidden role="tooltip"></div>
+<div class="zoomr" id="zoomr" aria-hidden="true"></div>
 
 <script src="/assets/js/vendor/nacl-fast.min.js"></script>
-<script type="module" src="/assets/js/desk.js?v=3"></script>
+<script type="module" src="/assets/js/desk.js?v=4"></script>
 </body>
 </html>
