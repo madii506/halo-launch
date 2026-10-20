@@ -37,19 +37,19 @@ async function boot() {
   try {
     const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
     if (!gl) throw new Error('no webgl');
-    const { run } = await import('./intro3d.js?v=2');
-    window.__halo = await run({ canvas, mobile: MOBILE, onEnter: go });
+    const { run } = await import('./intro3d.js?v=3');
+    const statusP = fetch('/api/status').then(r => r.json()).catch(() => null);
+    window.__halo = await run({ canvas, mobile: MOBILE, onEnter: go, status: statusP, onReady: () => { $('#ihint').classList.add('on'); $('#itouch').classList.add('on'); } });
     started = true;
-    requestAnimationFrame(() => canvas.classList.add('on'));
-    setTimeout(() => { $('#ihint').classList.add('on'); $('#itouch').classList.add('on'); }, 2400);
-  } catch (e) { if (!started) fallbackBoot(go); }
+    requestAnimationFrame(() => { canvas.classList.add('on'); const l = $('#iload'); if (l) l.remove(); });
+  } catch (e) { const l = $('#iload'); if (l) l.remove(); if (!started) fallbackBoot(go); }
 }
 function flashThen(fn) {
   const f = $('#iflash'); f.classList.add('go');
   setTimeout(fn, 320);
 }
 async function fallbackBoot(go) {
-  const pre = $('#ifall'); pre.hidden = false; $('#room').remove();
+  const pre = $('#ifall'); pre.hidden = false; $('#room').remove(); $$('#intro .lb, #iskip, #icap').forEach(e => e.remove());
   const lines = ['HALO BIOS v1.98  (c) nobody', 'cpu: anonymous @ 33 MHz', 'memory test: 640K ok', '', 'detecting wallet connection ...... none', 'detecting signature request ...... none', 'detecting your name .............. not found', 'creator key ...................... born in your browser', '', 'press enter.'];
   for (const l of lines) { pre.textContent += l + '\n'; await sleep(70); }
   $('#itouch').classList.add('on');
