@@ -46,7 +46,7 @@ async function boot() {
   try {
     const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
     if (!gl) throw new Error('no webgl');
-    const { run } = await import('./intro3d.js?v=6');
+    const { run } = await import('./intro3d.js?v=7');
     const statusP = fetch('/api/status').then(r => r.json()).catch(() => null);
     const sb = $('#isound');
     if (sb) { SOUND.onChange(st => { sb.textContent = st.muted ? '♪ sound off' : '♪ sound on'; sb.setAttribute('aria-pressed', String(!st.muted)); });

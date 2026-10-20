@@ -104,9 +104,6 @@ class Terminal {
       g.fillText(`${LAYERS[i][0]} ${LAYERS[i][1]}`, W / 2 - w + 10 / z, H / 2 - h + 8 / z);
     }
     g.shadowBlur = 0;
-    const core = clamp01((k - .55) / .45);
-    g.font = '64px VT, monospace'; g.fillStyle = `rgba(255,255,255,${.25 + core * .75})`; g.shadowColor = '#bfffe9'; g.shadowBlur = 30;
-    const tw = g.measureText('you').width; g.fillText('you', W / 2 - tw / 2, H / 2 - 32); g.shadowBlur = 0;
     if (k > .82) { g.fillStyle = `rgba(232,255,246,${(k - .82) / .18})`; g.fillRect(0, 0, W, H); }
   }
   glass(g) {
