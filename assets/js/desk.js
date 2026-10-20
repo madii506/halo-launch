@@ -1,6 +1,7 @@
 // HALO 98: the room, the boot on the CRT, then a dark old-school desktop where every window works.
 import { install } from './apps98.js?v=1';
 import { createSound } from './sound98.js?v=3';
+import * as WAL from './wallet98.js?v=1';
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MOBILE = matchMedia('(max-width: 760px)').matches || matchMedia('(hover: none)').matches;
@@ -341,13 +342,13 @@ async function coins(first) {
 function balloon(t, b) { const el = $('#balloon'); $('#balT').textContent = t; $('#balB').textContent = b; el.hidden = false; clearTimeout(balloon.t); balloon.t = setTimeout(() => el.hidden = true, 7000); }
 
 // ================================================================ launch.exe
-const W = { step: 0, image: null, key: null, own: false };
+const W = { step: 0, image: null, key: null, mode: 'key' };
 function go(s) {
   W.step = s;
   $$('#w-launch .step').forEach(el => el.classList.toggle('on', +el.dataset.s === s));
   $$('#rail div').forEach(b => { const i = +b.dataset.s; b.classList.toggle('on', i === s); b.classList.toggle('done', i < s); });
   $('#wizStatus').textContent = `step ${s + 1} of 5 · ${['coin', 'image', 'creator key', 'review', 'launch'][s]}`;
-  if (s === 2 && !W.key && !W.own) newKey();
+  if (s === 2 && !W.key && W.mode === 'key') newKey();
   if (s === 3) review();
 }
 const utf8len = s => new TextEncoder().encode(s).length;
@@ -373,20 +374,33 @@ async function cleanImage(file) {
 }
 function newKey() { const kp = nacl.sign.keyPair(); W.key = { pub: b58(kp.publicKey), sec: kp.secretKey }; $('#kAddr').textContent = W.key.pub; $('#kSec').textContent = b58(W.key.sec); $('#kSec').classList.remove('show'); $('#kSaved').checked = false; }
 function keyFile() { const blob = new Blob([JSON.stringify(Array.from(W.key.sec))], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `halo-creator-${W.key.pub.slice(0, 6)}.json`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
-const creator = () => W.own ? $('#fOwn').value.trim() : W.key && W.key.pub;
+const creator = () => W.mode === 'own' ? $('#fOwn').value.trim() : W.mode === 'wallet' ? (WAL.current() && WAL.current().address) : W.key && W.key.pub;
+const buySol = () => Math.max(0, Math.min(10, parseFloat($('#wBuy').value) || 0));
 function review() {
   const f = coinFields();
   $('#rImg').src = W.image ? W.image.dataUrl : '';
   const rows = [['name', esc(f.name)], ['ticker', '$' + esc(f.symbol)], ['description', esc((f.description ? f.description + '\n\n' : '') + 'launched on halo · ' + location.host)]];
   if (f.x) rows.push(['x', esc(f.x)]); if (f.tg) rows.push(['telegram', esc(f.tg)]); if (f.web) rows.push(['website', esc(f.web)]);
-  rows.push(['creator', `<span class="teal">${esc(creator())}</span> <span class="dim">${W.own ? '(your own)' : '(made in this browser)'}</span>`]);
-  rows.push(['launcher', '<span class="dim">a fresh wallet, made and funded at launch</span>']);
-  rows.push(['cost to you', '<b class="gold">free</b>']);
-  rows.push(['dev buy', '<span class="dim">none. nobody holds the coin at launch.</span>']);
+  if (W.mode === 'wallet') {
+    const b = buySol();
+    rows.push(['creator', `<span class="teal">${esc(creator() || '')}</span> <span class="dim">(your wallet)</span>`]);
+    rows.push(['launcher', '<span class="dim">your wallet. it signs and pays.</span>']);
+    rows.push(['cost to you', `<b class="gold">a little SOL${b ? ` + ${b} SOL dev buy` : ''}</b> <span class="dim">· paid by your wallet</span>`]);
+    rows.push(['dev buy', b ? `<b>${b} SOL</b> <span class="dim">· bought in the same transaction</span>` : '<span class="dim">none</span>']);
+  } else {
+    rows.push(['creator', `<span class="teal">${esc(creator())}</span> <span class="dim">${W.mode === 'own' ? '(your own)' : '(made in this browser)'}</span>`]);
+    rows.push(['launcher', '<span class="dim">a fresh wallet, made and funded at launch</span>']);
+    rows.push(['cost to you', '<b class="gold">free</b>']);
+    rows.push(['dev buy', '<span class="dim">none. nobody holds the coin at launch.</span>']);
+  }
   $('#rKv').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd${k === 'description' ? ' class="desc"' : ''}>${v}</dd>`).join('');
   syncLaunch();
 }
-function syncLaunch() { const b = $('#goLaunch'); if (!b) return; b.disabled = !(STATUS && STATUS.ready); if (W.step === 3) $('#e3').textContent = STATUS && !STATUS.ready ? (WHY[STATUS.why] || 'Launches are paused.') : (STATUS ? '' : 'Checking the treasury…'); }
+function syncLaunch() {
+  const b = $('#goLaunch'); if (!b) return;
+  if (W.mode === 'wallet') { b.disabled = !WAL.current(); b.textContent = 'sign & launch'; if (W.step === 3) $('#e3').textContent = WAL.current() ? '' : 'Connect a wallet first.'; return; }
+  b.textContent = 'launch'; b.disabled = !(STATUS && STATUS.ready); if (W.step === 3) $('#e3').textContent = STATUS && !STATUS.ready ? (WHY[STATUS.why] || 'Launches are paused.') : (STATUS ? '' : 'Checking the treasury…');
+}
 const term = lines => $('#term').innerHTML = lines.join('\n');
 function pow(challenge, bits, onP) { return new Promise((res, rej) => { const w = new Worker('/assets/js/pow.js'); w.onmessage = e => { if (e.data.done) { w.terminate(); res(e.data); } else onP(e.data); }; w.onerror = () => { w.terminate(); rej(new Error('Proof of work failed in this browser.')); }; w.postMessage({ challenge, bits }); }); }
 async function launch() {
@@ -399,7 +413,7 @@ async function launch() {
     const res = await pow(ch.challenge, ch.bits, p => { const k = Math.min(1, p.tries / Math.pow(2, ch.bits)), n = Math.round(k * 16); sayLast(`hashing on your device <span class="bar8">[${'█'.repeat(n)}${'░'.repeat(16 - n)}]</span> <span class="m">${(p.rate / 1e6).toFixed(2)}M h/s</span>`); });
     sayLast(`hashing on your device <span class="bar8">[${'█'.repeat(16)}]</span> <span class="ok">found</span> <span class="m">${((performance.now() - t0) / 1000).toFixed(1)}s</span>`);
     say(`cleaned image ……………… <span class="ok">${Math.round(W.image.bytes / 1024)} KB</span>`);
-    say(`creator ……………………… <span class="ok">${short(creator())}</span> <span class="m">(${W.own ? 'your own' : 'born in this browser'})</span>`);
+    say(`creator ……………………… <span class="ok">${short(creator())}</span> <span class="m">(${W.mode === 'own' ? 'your own' : 'born in this browser'})</span>`);
     say('treasury funds a fresh launcher · pump.fun create …');
     const j = await api('launch', { method: 'POST', body: { ...f, image: W.image.dataUrl, creator: creator(), pow: { challenge: ch.challenge, nonce: res.nonce } } });
     sayLast('treasury funds a fresh launcher · pump.fun create … <span class="ok">sent</span>');
@@ -411,6 +425,38 @@ async function launch() {
     say(''); say(`<span class="ok">■ ${esc(f.name)} ($${esc(f.symbol)}) is live.</span> its creator is a key nobody else has ever seen.`);
     $('#dPump').href = 'https://pump.fun/coin/' + j.mint; $('#dTx').href = 'https://solscan.io/tx/' + j.sig; $('#doneCard').classList.add('show');
     status(); coins(false);
+  } catch (e) {
+    say(`<span class="r">✗ ${esc(e.message)}</span>`); if (e.detail) say(`<span class="m">${esc(String(e.detail).slice(0, 200))}</span>`);
+    const back = document.createElement('button'); back.id = 'termBack'; back.className = 'bt'; back.type = 'button'; back.textContent = '< back to review'; back.style.marginTop = '10px'; back.onclick = () => { back.remove(); go(3); }; $('#term').after(back);
+  }
+}
+// A launch the connected wallet signs and pays for: the mint key is born here and signs after the wallet.
+async function walletLaunch() {
+  const f = coinFields(), out = []; const say = s => { out.push(s); term(out); }, sayLast = s => { out[out.length - 1] = s; term(out); };
+  go(4); $('#doneCard').classList.remove('show'); const oldBack = $('#termBack'); if (oldBack) oldBack.remove();
+  try {
+    const cur = WAL.current(), mk = nacl.sign.keyPair(), mint = b58(mk.publicKey), buy = buySol();
+    say('<span class="m">C:\\HALO&gt;</span> launch --wallet');
+    say(`wallet ………………………… <span class="ok">${short(cur.address)}</span> <span class="m">(${esc(cur.name || 'connected')})</span>`);
+    say(`coin key …………………… <span class="ok">${short(mint)}</span> <span class="m">(born in this browser)</span>`);
+    say('building the launch' + (buy ? ` with a ${buy} SOL dev buy` : '') + ' …');
+    const j = await api('walletbuild', { method: 'POST', body: { ...f, image: W.image.dataUrl, creator: cur.address, mint, buySol: buy } });
+    sayLast('building the launch' + (buy ? ` with a ${buy} SOL dev buy` : '') + ' … <span class="ok">ok</span>');
+    say('<span class="g">check your wallet and approve it …</span>');
+    let signed; try { signed = await WAL.signTx(unb64(j.tx)); } catch (e) { throw new Error(/reject|denied|cancel/i.test(String(e && e.message)) ? 'You cancelled in your wallet. Nothing was sent.' : (e && e.message) || 'The wallet did not sign.'); }
+    sayLast('check your wallet and approve it … <span class="ok">signed</span>');
+    const full = WAL.addSignature(signed, mk.publicKey, mk.secretKey);
+    say('sending to solana …');
+    const r = await api('walletsend', { method: 'POST', body: { id: j.id, tx: WAL.b64(full) } });
+    sayLast('sending to solana … <span class="ok">sent</span>');
+    say(`mint ……………………………… <span class="g">${r.mint}</span>`);
+    let st = r.status, n = 0; say(st === 'launched' ? 'confirmed ……………………… <span class="ok">yes</span>' : 'waiting for confirmation …');
+    while (st === 'sending' && n++ < 40) { await sleep(2500); try { st = (await api('launches', { params: { id: r.id } })).launch.status; } catch {} if (st === 'launched') sayLast('confirmed ……………………… <span class="ok">yes</span>'); }
+    if (st === 'failed') throw new Error('The launch did not land. Nothing was created.');
+    if (st !== 'launched') say('<span class="g">still confirming. check coins.db in a minute.</span>');
+    say(''); say(`<span class="ok">■ ${esc(f.name)} ($${esc(f.symbol)}) is live.</span> launched from your wallet${buy ? `, ${buy} SOL bought first` : ''}.`);
+    $('#dPump').href = 'https://pump.fun/coin/' + r.mint; $('#dTx').href = 'https://solscan.io/tx/' + r.sig; $('#doneCard').classList.add('show');
+    coins(false);
   } catch (e) {
     say(`<span class="r">✗ ${esc(e.message)}</span>`); if (e.detail) say(`<span class="m">${esc(String(e.detail).slice(0, 200))}</span>`);
     const back = document.createElement('button'); back.id = 'termBack'; back.className = 'bt'; back.type = 'button'; back.textContent = '< back to review'; back.style.marginTop = '10px'; back.onclick = () => { back.remove(); go(3); }; $('#term').after(back);
@@ -436,26 +482,50 @@ function wizard() {
   $('#kDl').onclick = () => { keyFile(); $('#kSaved').checked = true; };
   $('#kCopy').onclick = () => copy(b58(W.key.sec));
   $('#kNew').onclick = () => newKey();
-  $('#kToggle').onclick = () => { W.own = !W.own; $('#keyBox').hidden = W.own; $('#ownBox').hidden = !W.own; $('#kToggle').textContent = W.own ? 'make a fresh key in this browser instead (recommended)' : 'use an address i already have instead'; if (!W.own && !W.key) newKey(); };
-  $('#n2').onclick = () => { if (W.own) { if (!isAddr($('#fOwn').value.trim())) { $('#e2').textContent = 'That is not a Solana address.'; return; } } else if (!$('#kSaved').checked) { $('#e2').textContent = 'Save your creator key first, then tick the box.'; return; } $('#e2').textContent = ''; go(3); };
-  $('#goLaunch').onclick = () => { if (!$('#rOk').checked) { $('#e3').textContent = 'Tick the box to confirm.'; return; } if (!STATUS || !STATUS.ready) { syncLaunch(); return; } launch(); };
+  const HINT = { key: "a brand-new key becomes the coin's creator. every creator fee lands in it. made right now, on your device.", own: 'an address you already control becomes the creator. the launch stays free.', wallet: 'your wallet launches the coin itself: it signs, pays and can buy first.' };
+  const setMode = m => { W.mode = m; $$('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m)); $('#keyBox').hidden = m !== 'key'; $('#ownBox').hidden = m !== 'own'; $('#walletBox').hidden = m !== 'wallet'; $('#s2hint').textContent = HINT[m]; $('#e2').textContent = ''; if (m === 'key' && !W.key) newKey(); if (m === 'wallet') walletList(); $('#wizCost').textContent = m === 'wallet' ? 'cost to you: paid by your wallet' : 'cost to you: free'; syncLaunch(); };
+  $$('#modeSeg button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+  const walletList = () => {
+    const ws = WAL.wallets(), box = $('#wList'); if (WAL.current()) { box.innerHTML = ''; return; }
+    box.innerHTML = ws.length ? ws.map((w, i) => `<button class="bt wbtn" type="button" data-w="${i}"><img src="${esc(w.icon || '')}" alt="">${esc(w.name)}</button>`).join('') : '<p class="hint">no solana wallet found in this browser. phantom, solflare and backpack all work. on a phone, open this page inside your wallet app.</p>';
+    $$('#wList [data-w]').forEach(b => b.onclick = async () => { $('#e2').textContent = ''; try { await WAL.connect(ws[+b.dataset.w]); } catch (e) { $('#e2').textContent = e && e.message ? e.message : 'The wallet did not connect.'; } });
+  };
+  WAL.onWallets(() => { if (W.mode === 'wallet') walletList(); });
+  WAL.onChange(cur => {
+    $('#wConn').hidden = !cur; if (cur) { $('#wName').textContent = cur.name || 'wallet'; $('#wAddr').textContent = cur.address; $('#wIcon').src = cur.icon || '/assets/img/ico-claim-16.png'; }
+    walletList(); if (W.step === 3) review(); else syncLaunch();
+  });
+  $('#wOff').onclick = () => WAL.disconnect();
+  $('#wBuy').addEventListener('input', () => { if (W.step === 3) review(); });
+  $('#n2').onclick = () => {
+    if (W.mode === 'own') { if (!isAddr($('#fOwn').value.trim())) { $('#e2').textContent = 'That is not a Solana address.'; return; } }
+    else if (W.mode === 'wallet') { if (!WAL.current()) { $('#e2').textContent = 'Connect a wallet first.'; return; } const v = $('#wBuy').value; if (v && !(parseFloat(v) >= 0 && parseFloat(v) <= 10)) { $('#e2').textContent = 'The dev buy can be 0 to 10 SOL.'; return; } }
+    else if (!$('#kSaved').checked) { $('#e2').textContent = 'Save your creator key first, then tick the box.'; return; }
+    $('#e2').textContent = ''; go(3); };
+  $('#goLaunch').onclick = () => { if (!$('#rOk').checked) { $('#e3').textContent = 'Tick the box to confirm.'; return; } if (W.mode === 'wallet') { if (!WAL.current()) { syncLaunch(); return; } return walletLaunch(); } if (!STATUS || !STATUS.ready) { syncLaunch(); return; } launch(); };
   $('#dAgain').onclick = () => { W.image = null; W.key = null; $('#s0').reset(); $('#pv').innerHTML = '<pre class="asciiprev">  drop\n  an image\n  here</pre>'; $('#imgInfo').textContent = ''; $('#rOk').checked = false; go(0); };
 }
 
 // ================================================================ claim.exe
-const CL = { kp: null, addr: null, watch: false };
+const CL = { kp: null, addr: null, watch: false, wallet: false };
 function loadSecret(text) { text = String(text || '').trim(); const sec = text.startsWith('[') ? Uint8Array.from(JSON.parse(text)) : unb58(text); if (sec.length === 32) return nacl.sign.keyPair.fromSeed(sec); if (sec.length !== 64) throw new Error('That does not look like a Solana secret key.'); return nacl.sign.keyPair.fromSecretKey(sec); }
-function setClaimKey(kp, watchAddr) { CL.kp = kp; CL.watch = !kp; CL.addr = kp ? b58(kp.publicKey) : watchAddr; $('#eK').textContent = ''; $('#cAddr').textContent = CL.addr + (CL.watch ? '  (read-only)' : ''); $('#cRefresh').disabled = false; refreshClaim(); }
+function setClaimKey(kp, watchAddr, wallet) { CL.kp = kp; CL.wallet = !!wallet; CL.watch = !kp && !wallet; CL.addr = kp ? b58(kp.publicKey) : watchAddr; $('#eK').textContent = ''; $('#cAddr').textContent = CL.addr + (CL.watch ? '  (read-only)' : CL.wallet ? '  (connected wallet)' : ''); $('#cRefresh').disabled = false; $('#cClaim').textContent = CL.wallet ? 'claim · your wallet signs' : 'claim · gas paid'; refreshClaim(); }
 async function refreshClaim() {
   if (!CL.addr) return; $('#eC').textContent = '';
   try { const j = await api('claim', { params: { creator: CL.addr } });
     $('#cVault').textContent = `${j.vaultSol.toFixed(4)} SOL`; $('#cWallet').textContent = `${j.walletSol.toFixed(4)} SOL`;
-    $('#cClaim').disabled = CL.watch || !j.canClaim; $('#cSend').disabled = CL.watch || !(j.walletSol > 0.00001);
+    $('#cClaim').disabled = CL.watch || !j.canClaim; $('#cSend').disabled = CL.watch || CL.wallet || !(j.walletSol > 0.00001);
     if (!j.canClaim && j.vaultSol > 0) $('#eC').innerHTML = `<span class="dim">claims open from ${j.minClaimSol} SOL, so the network fee is worth paying.</span>`;
   } catch (e) { $('#eC').textContent = e.message; }
 }
 function cterm(s) { const t = $('#cTerm'); t.hidden = false; t.innerHTML = s; t.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
 async function signAndSend(build, sendOp, body) { const b = await api(build, { method: 'POST', body }); const sig = nacl.sign.detached(unb64(b.message), CL.kp.secretKey); return api(sendOp, { method: 'POST', body: { message: b.message, token: b.token, signer: CL.addr, signature: b58(sig) } }); }
+async function walletClaim() {
+  const b = await api('wclaimbuild', { method: 'POST', body: { creator: CL.addr } });
+  cterm('<span class="g">check your wallet and approve the claim …</span>');
+  let signed; try { signed = await WAL.signTx(unb64(b.tx)); } catch (e) { throw new Error(/reject|denied|cancel/i.test(String(e && e.message)) ? 'You cancelled in your wallet.' : (e && e.message) || 'The wallet did not sign.'); }
+  return api('wclaimsend', { method: 'POST', body: { creator: CL.addr, tx: WAL.b64(signed) } });
+}
 function claimUi() {
   const load = async f => { try { setClaimKey(loadSecret(await f.text())); } catch { $('#eK').textContent = 'That file is not a creator key.'; } };
   $('#kFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) load(f); e.target.value = ''; });
@@ -466,8 +536,16 @@ function claimUi() {
   $('#kPaste').addEventListener('change', e => { try { setClaimKey(loadSecret(e.target.value)); e.target.value = ''; } catch (er) { $('#eK').textContent = er.message || 'That is not a secret key.'; } });
   $('#kWatch').addEventListener('change', e => { const a = e.target.value.trim(); if (!isAddr(a)) { $('#eK').textContent = 'That is not a Solana address.'; return; } setClaimKey(null, a); });
   $('#cRefresh').onclick = refreshClaim;
-  $('#cClaim').onclick = async () => { $('#cClaim').disabled = true; cterm('building the claim · the treasury pays the fee …');
-    try { const r = await signAndSend('claimbuild', 'claimsend', { creator: CL.addr }); cterm(`<span class="ok">claimed.</span> <a class="lk" href="https://solscan.io/tx/${r.sig}" target="_blank" rel="noopener noreferrer">transaction ↗</a>`); setTimeout(refreshClaim, 2500); }
+  $('#cConn').onclick = async () => {
+    let cur = WAL.current();
+    if (!cur) { const ws = WAL.wallets(); if (!ws.length) return dialog('connect wallet', 'no solana wallet found in this browser.<br><span class="dim">phantom, solflare and backpack all work. on a phone, open this page inside your wallet app.</span>', [['ok', true]], 'claim');
+      const i = ws.length === 1 ? 0 : await dialog('connect wallet', 'which wallet?', [...ws.map((w, k) => [w.name, k === 0]), ['cancel', false]], 'claim'); if (i < 0 || i >= ws.length) return;
+      try { cur = await WAL.connect(ws[i]); } catch (e) { $('#eK').textContent = e && e.message ? e.message : 'The wallet did not connect.'; return; } }
+    setClaimKey(null, cur.address, true);
+  };
+  WAL.onChange(cur => { $('#cConn').textContent = cur ? `use ${short(cur.address)}` : 'connect wallet'; if (CL.wallet && (!cur || cur.address !== CL.addr)) { CL.wallet = false; CL.addr = null; $('#cAddr').textContent = 'no key loaded'; $('#cClaim').disabled = true; } });
+  $('#cClaim').onclick = async () => { $('#cClaim').disabled = true; cterm(CL.wallet ? 'building the claim for your wallet …' : 'building the claim · the treasury pays the fee …');
+    try { const r = CL.wallet ? await walletClaim() : await signAndSend('claimbuild', 'claimsend', { creator: CL.addr }); cterm(`<span class="ok">claimed.</span> <a class="lk" href="https://solscan.io/tx/${r.sig}" target="_blank" rel="noopener noreferrer">transaction ↗</a>`); setTimeout(refreshClaim, 2500); }
     catch (e) { cterm(`<span class="r">✗ ${esc(e.message)}</span>`); $('#cClaim').disabled = false; } };
   $('#cSend').onclick = async () => { const to = $('#cTo').value.trim(); if (!isAddr(to)) { $('#eC').textContent = 'Enter a Solana address to send to.'; return; } $('#cSend').disabled = true; cterm('building the transfer …');
     try { const r = await signAndSend('withdrawbuild', 'withdrawsend', { from: CL.addr, to }); cterm(`<span class="ok">sent.</span> <a class="lk" href="https://solscan.io/tx/${r.sig}" target="_blank" rel="noopener noreferrer">transaction ↗</a>`); setTimeout(refreshClaim, 2500); }
