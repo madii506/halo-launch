@@ -17,257 +17,238 @@
 <link rel="icon" type="image/png" sizes="64x64" href="/assets/img/icon-64.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/icon-32.png">
 <link rel="apple-touch-icon" href="/assets/img/icon-180.png">
+<link rel="preload" href="/assets/fonts/VT323-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/JetBrainsMono.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/assets/fonts/PixelifySans.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/halo.css?v=1">
+<link rel="stylesheet" href="/assets/css/desk.css?v=2">
 </head>
 <body class="booting">
 
-<div id="intro" role="dialog" aria-label="HALO boot screen">
-  <div class="tube">
-    <div class="beam"></div>
-    <div class="screen">
-      <pre id="bios" aria-live="polite"></pre>
-      <div class="logo" id="introLogo" aria-hidden="true"></div>
-      <div class="prompt" id="prompt">
-        <button class="enter" id="enterBtn" type="button">enter halo ↵</button>
-        <span class="dim" style="font-size:13px">press <kbd>enter</kbd></span>
-        <button class="skip" id="skipBtn" type="button">skip intro</button>
-      </div>
-    </div>
-  </div>
+<!-- 1. the room: a PC on a desk at night, the boot on its CRT -->
+<div id="intro" aria-label="HALO boot">
+  <canvas id="room" aria-hidden="true"></canvas>
+  <div class="ihint" id="ihint"><span>type <b>help</b></span><span>press <kbd>enter</kbd> to go in</span><span><kbd>esc</kbd> skip</span></div>
+  <div class="itouch" id="itouch"><button type="button" data-go="">enter halo ↵</button><button type="button" data-go="launch">launch</button><button type="button" data-go="coins">coins</button><button type="button" data-go="claim">claim</button></div>
+  <pre class="ifall" id="ifall" hidden></pre>
+  <div class="iflash" id="iflash"></div>
 </div>
 
-<canvas id="rain" aria-hidden="true"></canvas>
-<div class="crt" aria-hidden="true"></div>
+<!-- 2. the splash -->
+<div id="splash" hidden><div class="sp"><img src="/assets/img/ico-pc.png" alt=""><div><div class="sp1">halo<span>98</span></div><div class="sp2">private launch system</div></div></div><div class="spbar"><i></i></div><div class="spfoot">starting halo 98…</div></div>
 
-<header class="top">
-  <div class="wrap">
-    <a class="brand" href="#hero" aria-label="HALO home"><img src="/assets/img/icon-64.png" alt="">halo<b>_</b></a>
-    <nav class="links" id="links">
-      <a href="#launch">launch</a><a href="#coins">coins</a><a href="#claim">claim</a><a href="#layers">layers</a><a href="#docs">docs</a>
-    </nav>
-    <div class="pulse" id="pulse"><span class="dot" id="pulseDot"></span><span id="pulseText">connecting…</span></div>
-    <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="links">menu</button>
+<!-- 3. the desktop -->
+<div id="desk" hidden>
+  <canvas id="wall" aria-hidden="true"></canvas>
+  <div class="wmark" aria-hidden="true">halo 98 · second edition<br>build 1998.10 · no names</div>
+  <div class="icons" id="icons" role="list">
+    <button class="ic" data-open="pc" role="listitem"><img src="/assets/img/ico-pc.png" alt=""><span>my computer</span></button>
+    <button class="ic" data-open="launch" role="listitem"><img src="/assets/img/ico-launch.png" alt=""><span>launch.exe</span></button>
+    <button class="ic" data-open="coins" role="listitem"><img src="/assets/img/ico-coins.png" alt=""><span>coins.db</span></button>
+    <button class="ic" data-open="claim" role="listitem"><img src="/assets/img/ico-claim.png" alt=""><span>claim.exe</span></button>
+    <button class="ic" data-open="privacy" role="listitem"><img src="/assets/img/ico-privacy.png" alt=""><span>privacy.cpl</span></button>
+    <button class="ic" data-open="readme" role="listitem"><img src="/assets/img/ico-readme.png" alt=""><span>readme.txt</span></button>
+    <button class="ic" data-open="cmd" role="listitem"><img src="/assets/img/ico-cmd.png" alt=""><span>cmd.exe</span></button>
+    <button class="ic" data-open="bin" role="listitem"><img src="/assets/img/ico-bin.png" alt=""><span>recycle bin</span></button>
+    <button class="ic" data-open="x" role="listitem" id="icX" hidden><img src="/assets/img/ico-x.png" alt=""><span>halo on x.url</span></button>
   </div>
-</header>
+  <div class="lasso" id="sel"></div>
 
-<main id="site">
-  <section id="hero">
-    <div class="wrap">
-      <div>
-        <div class="sys"><span>halo 98</span><span>private launchpad</span><span>solana · pump.fun</span></div>
-        <h1>launch on<br><b>halo</b></h1>
-        <p class="sub">launch with layers of privacy. <em>every one of them real.</em></p>
-        <div class="nos"><span>no connect</span><span>no signature</span><span>no sol</span></div>
-        <div class="cta">
-          <a class="btn" href="#launch">launch a coin, free →</a>
-          <a class="btn ghost" href="#layers">how it stays private</a>
+  <div id="wins">
+    <!-- welcome -->
+    <section class="w" id="w-welcome" data-app="welcome" data-title="welcome to halo 98" data-icon="pc" style="--ww:640px;--wh:390px">
+      <div class="wb welcome">
+        <div class="wl">
+          <div class="wt">welcome to <b>halo</b><span>98</span></div>
+          <p>launch with layers of privacy. <em>every one of them real.</em></p>
+          <div class="wbtns">
+            <button class="bt big" data-open="launch"><img src="/assets/img/ico-launch-16.png" alt="">launch a coin, free</button>
+            <button class="bt big" data-open="coins"><img src="/assets/img/ico-coins-16.png" alt="">see every coin</button>
+            <button class="bt big" data-open="claim"><img src="/assets/img/ico-claim-16.png" alt="">claim fees, no gas</button>
+            <button class="bt big" data-open="privacy"><img src="/assets/img/ico-privacy-16.png" alt="">how it stays private</button>
+          </div>
         </div>
-        <div class="statusline" id="heroStatus"><span class="dot"></span><span>reading the treasury…</span></div>
-      </div>
-      <div class="stage" id="stage">
-        <div class="glowfloor"></div>
-        <canvas id="ascii" aria-hidden="true"></canvas>
-        <div class="cap">live · rendered in characters</div>
-      </div>
-    </div>
-  </section>
-
-  <div class="ticker" id="ticker" aria-label="recent launches"><div class="track" id="track"></div></div>
-
-  <section id="layers">
-    <div class="wrap">
-      <div class="kicker reveal">six layers</div>
-      <h2 class="reveal">every layer is <b>real.</b></h2>
-      <p class="lead reveal">most "private" launchpads tell a story. this one runs code you can check. each layer below says what it protects, and what stays public anyway.</p>
-      <div class="layers">
-        <pre class="rings" id="rings" aria-hidden="true"></pre>
-        <div class="lys" id="lys">
-          <article class="ly" data-i="0"><div class="n">01</div><h3>a site that tracks nothing</h3><p>no analytics, no cookies, no third-party scripts or fonts. the page only talks to its own server, and its security headers forbid anything else. open devtools and check.</p><div class="no">your IP reaches our host, like every website.</div></article>
-          <article class="ly" data-i="1"><div class="n">02</div><h3>no wallet connect</h3><p>you never connect a wallet, approve anything, or sign a launch. there is nothing for a drainer to hijack and no wallet of yours on the launch transaction.</p><div class="no">the coin, its name, image and description.</div></article>
-          <article class="ly" data-i="2"><div class="n">03</div><h3>a creator key born in your browser</h3><p>your browser makes a brand-new key, and that key becomes the coin's creator. it has no history and no funding trail. we never see it. you save it, you own the fees.</p><div class="no">the creator address and the fees it earns.</div></article>
-          <article class="ly" data-i="3"><div class="n">04</div><h3>a fresh launcher every time</h3><p>a new wallet signs each launch. the halo treasury funds it inside the same transaction to the lamport, so it ends empty. the dev wallet on the chart is never yours.</p><div class="no">that the halo treasury paid for the launch.</div></article>
-          <article class="ly" data-i="4"><div class="n">05</div><h3>claims without gas</h3><p>funding a new wallet is how people get traced. so the creator key never needs funding: you sign the claim in your browser and the treasury pays the network fee.</p><div class="no">the claim, and anything you do with the fees after.</div></article>
-          <article class="ly" data-i="5"><div class="n">06</div><h3>clean files</h3><p>your image is redrawn in your browser before upload, which drops hidden data like camera, time and location. only the pixels leave your device.</p><div class="no">whatever the picture itself shows.</div></article>
+        <div class="wr">
+          <div class="nos"><span>no wallet connect</span><span>no signature</span><span>no SOL</span></div>
+          <div class="gb"><div class="lg">right now</div><div id="welcomeStatus" class="dim">reading the treasury…</div></div>
+          <label class="cb"><input type="checkbox" id="welcomeShow" checked> show this at startup</label>
         </div>
       </div>
-      <div class="public reveal"><b>what no launchpad can hide:</b> solana is a public ledger. the coin, every trade, the creator address and every movement of its fees are visible to anyone. halo makes sure none of it points back to <b>you</b> — as long as you never link the creator key to your own wallet.</div>
-    </div>
-  </section>
+    </section>
 
-  <section id="launch">
-    <div class="wrap">
-      <div class="kicker reveal">launch.exe</div>
-      <h2 class="reveal">launch a coin. <b>free.</b></h2>
-      <p class="lead reveal">four short steps. the treasury pays the cost, a fresh wallet signs it, and the coin goes live on pump.fun with your browser-made key as its creator.</p>
-      <div class="win wiz reveal">
-        <div class="rail" id="rail">
-          <button type="button" data-s="0" class="on"><span class="k">01</span>coin</button>
-          <button type="button" data-s="1"><span class="k">02</span>image</button>
-          <button type="button" data-s="2"><span class="k">03</span>creator key</button>
-          <button type="button" data-s="3"><span class="k">04</span>review</button>
-          <button type="button" data-s="4"><span class="k">05</span>launch</button>
-          <div class="free" id="freeBox">cost to you: <b>0 SOL</b><br><span id="freeLeft">free launches left today: …</span></div>
-        </div>
+    <!-- launch.exe -->
+    <section class="w" id="w-launch" data-app="launch" data-title="launch.exe — new coin wizard" data-icon="launch" style="--ww:820px;--wh:600px">
+      <div class="wb wiz">
+        <aside class="wside"><pre id="wizArt" aria-hidden="true"></pre><div class="wsteps" id="rail">
+          <div data-s="0" class="on">coin</div><div data-s="1">image</div><div data-s="2">creator key</div><div data-s="3">review</div><div data-s="4">launch</div>
+        </div><div class="wfree" id="freeLeft">free launches left today: …</div></aside>
         <div class="pane">
           <form class="step on" data-s="0" id="s0" novalidate>
             <h3>the coin</h3><p class="hint">what people will see on pump.fun.</p>
-            <div class="stack">
-              <div class="grid2">
-                <div class="field"><label for="fName"><b>name</b> · up to 32 bytes</label><input class="in" id="fName" maxlength="32" autocomplete="off" placeholder="nobody"></div>
-                <div class="field"><label for="fSym"><b>ticker</b> · up to 10</label><input class="in" id="fSym" maxlength="11" autocomplete="off" placeholder="NOBODY"></div>
-              </div>
-              <div class="field"><label for="fDesc"><b>description</b> · optional</label><textarea class="in" id="fDesc" maxlength="600" placeholder="what is it? keep your name out of it."></textarea><span class="hint" id="descCount">0 / 600 · "launched on halo" is added at the end</span></div>
-              <div class="grid2">
-                <div class="field"><label for="fX">x link · optional</label><input class="in" id="fX" autocomplete="off" placeholder="x.com/…"></div>
-                <div class="field"><label for="fTg">telegram · optional</label><input class="in" id="fTg" autocomplete="off" placeholder="t.me/…"></div>
-              </div>
-              <div class="field"><label for="fWeb">website · optional</label><input class="in" id="fWeb" autocomplete="off" placeholder="https://…"></div>
+            <div class="grid2">
+              <label class="field"><span>name · up to 32 bytes</span><input class="in" id="fName" maxlength="32" autocomplete="off" placeholder="nobody"></label>
+              <label class="field"><span>ticker · up to 10</span><input class="in" id="fSym" maxlength="11" autocomplete="off" placeholder="NOBODY"></label>
             </div>
+            <label class="field"><span>description · optional</span><textarea class="in" id="fDesc" maxlength="600" placeholder="what is it? keep your name out of it."></textarea><span class="hint" id="descCount">0 / 600 · "launched on halo" is added at the end</span></label>
+            <div class="grid2">
+              <label class="field"><span>x link · optional</span><input class="in" id="fX" autocomplete="off" placeholder="x.com/…"></label>
+              <label class="field"><span>telegram · optional</span><input class="in" id="fTg" autocomplete="off" placeholder="t.me/…"></label>
+            </div>
+            <label class="field"><span>website · optional</span><input class="in" id="fWeb" autocomplete="off" placeholder="https://…"></label>
             <div class="err" id="e0"></div>
-            <div class="navrow"><span class="grow"></span><button class="btn" type="submit">next: image →</button></div>
+            <div class="navrow"><span class="grow"></span><button class="bt" type="button" data-cancel>cancel</button><button class="bt def" type="submit">next &gt;</button></div>
           </form>
-
           <div class="step" data-s="1" id="s1">
-            <h3>the image</h3><p class="hint">png, jpg, webp or gif. it gets redrawn here, in your browser, before it goes anywhere.</p>
-            <label class="drop" id="drop">
-              <div class="pv" id="pv"><pre class="asciiprev" id="pvAscii">  drop
+            <h3>the image</h3><p class="hint">it gets redrawn here, in your browser, before it goes anywhere. that drops hidden data like location.</p>
+            <label class="drop" id="drop"><div class="pv" id="pv"><pre class="asciiprev">  drop
   an image
-  here</pre></div>
-              <div><b>choose an image</b> or drop it here<br><span class="hint">square works best · max 1.5 MB after cleaning</span><br><span class="hint" id="imgInfo"></span></div>
-              <input type="file" id="fImg" accept="image/png,image/jpeg,image/webp,image/gif" class="sr">
-            </label>
+  here</pre></div><div><b>choose an image</b> or drop it here<br><span class="hint">png, jpg, webp or gif · square works best</span><br><span class="hint" id="imgInfo"></span></div><input type="file" id="fImg" accept="image/png,image/jpeg,image/webp,image/gif" class="sr"></label>
             <div class="err" id="e1"></div>
-            <div class="navrow"><button class="btn ghost" type="button" data-back>← back</button><span class="grow"></span><button class="btn" type="button" id="n1">next: creator key →</button></div>
+            <div class="navrow"><span class="grow"></span><button class="bt" type="button" data-back>&lt; back</button><button class="bt def" type="button" id="n1">next &gt;</button></div>
           </div>
-
           <div class="step" data-s="2" id="s2">
             <h3>the creator key</h3><p class="hint">this new wallet becomes the coin's creator. every creator fee lands in it. made right now, on your device.</p>
-            <div class="stack" id="keyBox">
-              <div class="key">
-                <span class="hint">creator address (public)</span>
-                <div class="addr" id="kAddr">…</div>
-                <span class="hint">secret key · click to reveal · never share it</span>
-                <div class="sec" id="kSec">…</div>
-                <div class="row"><button class="btn sm" type="button" id="kDl">download key file</button><button class="btn sm ghost" type="button" id="kCopy">copy secret</button><button class="btn sm ghost" type="button" id="kNew">make another</button></div>
+            <div id="keyBox">
+              <div class="gb"><div class="lg">creator key</div>
+                <span class="hint">address (public)</span><div class="addr" id="kAddr">…</div>
+                <span class="hint">secret key · click to reveal · never share it</span><div class="sec" id="kSec">…</div>
+                <div class="row"><button class="bt" type="button" id="kDl">save key file…</button><button class="bt" type="button" id="kCopy">copy secret</button><button class="bt" type="button" id="kNew">new key</button></div>
               </div>
-              <div class="warn">this key is the only way to claim the coin's fees. halo never sees it and cannot recover it. save it somewhere safe before you launch. it imports into phantom or solflare too.</div>
-              <label class="check"><input type="checkbox" id="kSaved"> <span>i saved my creator key</span></label>
+              <div class="note"><img src="/assets/img/ico-warn-16.png" alt="">this key is the only way to claim the coin's fees. halo never sees it and cannot recover it. it imports into phantom or solflare.</div>
+              <label class="cb"><input type="checkbox" id="kSaved"> i saved my creator key</label>
             </div>
-            <div class="stack" id="ownBox" hidden>
-              <div class="field"><label for="fOwn"><b>your own creator address</b></label><input class="in" id="fOwn" autocomplete="off" placeholder="a solana address you control"></div>
-              <div class="warn">using an address you already use links the coin to you. that skips layers 03 and 05.</div>
+            <div id="ownBox" hidden>
+              <label class="field"><span>your own creator address</span><input class="in" id="fOwn" autocomplete="off" placeholder="a solana address you control"></label>
+              <div class="note"><img src="/assets/img/ico-warn-16.png" alt="">an address you already use links the coin to you. that skips two of the six layers.</div>
             </div>
-            <button class="toggle" type="button" id="kToggle" style="margin-top:12px">use an address i already have instead</button>
+            <button class="link" type="button" id="kToggle">use an address i already have instead</button>
             <div class="err" id="e2"></div>
-            <div class="navrow"><button class="btn ghost" type="button" data-back>← back</button><span class="grow"></span><button class="btn" type="button" id="n2">next: review →</button></div>
+            <div class="navrow"><span class="grow"></span><button class="bt" type="button" data-back>&lt; back</button><button class="bt def" type="button" id="n2">next &gt;</button></div>
           </div>
-
           <div class="step" data-s="3" id="s3">
             <h3>review</h3><p class="hint">this is exactly what goes on-chain.</p>
             <div class="review"><img id="rImg" alt=""><dl class="kv" id="rKv"></dl></div>
-            <label class="check" style="margin-top:18px"><input type="checkbox" id="rOk"> <span>the details are right, and i understand a coin on pump.fun cannot be edited or deleted.</span></label>
+            <label class="cb"><input type="checkbox" id="rOk"> the details are right. a coin on pump.fun cannot be edited or deleted.</label>
             <div class="err" id="e3"></div>
-            <div class="navrow"><button class="btn ghost" type="button" data-back>← back</button><span class="grow"></span><button class="btn" type="button" id="goLaunch">launch it →</button></div>
+            <div class="navrow"><span class="grow"></span><button class="bt" type="button" data-back>&lt; back</button><button class="bt def" type="button" id="goLaunch">launch</button></div>
           </div>
-
           <div class="step" data-s="4" id="s4">
-            <h3>launching</h3><p class="hint">keep this tab open. it takes a few seconds.</p>
+            <h3>launching</h3><p class="hint">keep this window open. it takes a few seconds.</p>
             <div class="term" id="term"></div>
-            <div class="done-card" id="doneCard">
-              <div class="row"><a class="btn" id="dPump" target="_blank" rel="noopener noreferrer">open on pump.fun ↗</a><a class="btn ghost" id="dTx" target="_blank" rel="noopener noreferrer">transaction ↗</a><button class="btn ghost" type="button" id="dAgain">launch another</button></div>
-              <span class="hint">claim this coin's fees any time in <a class="lk" href="#claim">claim</a> with your creator key.</span>
-            </div>
+            <div class="done-card" id="doneCard"><div class="row"><a class="bt def" id="dPump" target="_blank" rel="noopener noreferrer">open on pump.fun ↗</a><a class="bt" id="dTx" target="_blank" rel="noopener noreferrer">transaction ↗</a><button class="bt" type="button" id="dAgain">launch another</button></div>
+              <span class="hint">claim this coin's fees any time in claim.exe with your creator key.</span></div>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+      <div class="sbar"><span id="wizStatus">step 1 of 5</span><span id="wizCost">cost to you: 0 SOL</span></div>
+    </section>
 
-  <section id="coins">
-    <div class="wrap">
-      <div class="kicker reveal">dir /coins</div>
-      <h2 class="reveal">every coin launched <b>on halo.</b></h2>
-      <p class="lead reveal">read live from the chain. no creator here is anyone you know.</p>
-      <div class="win tablebox reveal">
-        <div class="bar"><span class="t">coins.db</span><span id="coinsMeta"></span><span class="r">— □ ×</span></div>
-        <div id="coinsBody"><div class="empty">loading…</div></div>
-      </div>
-    </div>
-  </section>
+    <!-- coins.db -->
+    <section class="w" id="w-coins" data-app="coins" data-title="coins.db — C:\HALO\COINS" data-icon="coins" style="--ww:860px;--wh:520px">
+      <div class="menubar"><span>file</span><span>view</span><button class="mlink" type="button" id="coinsRefresh">refresh</button></div>
+      <div class="addrbar"><span>address</span><div class="in sunk">C:\HALO\COINS\ · read live from the chain</div></div>
+      <div class="wb list" id="coinsBody"><div class="empty">loading…</div></div>
+      <div class="sbar"><span id="coinsMeta">—</span><span id="coinsSol"></span></div>
+    </section>
 
-  <section id="claim">
-    <div class="wrap">
-      <div class="kicker reveal">claim.exe</div>
-      <h2 class="reveal">claim your fees. <b>no gas.</b></h2>
-      <p class="lead reveal">load your creator key. it stays in this tab, in memory, and is gone when you close it. you sign in your browser, the treasury pays the network fee.</p>
-      <div class="claimgrid">
-        <div class="win reveal">
-          <div class="bar"><span class="t">load creator key</span><span class="r">— □ ×</span></div>
-          <div class="body">
-            <label class="drop" id="kDrop" style="grid-template-columns:1fr">
-              <div><b>drop your key file</b> or choose it<br><span class="hint">halo-creator-….json · read here, never uploaded</span></div>
-              <input type="file" id="kFile" accept=".json,application/json,text/plain" class="sr">
-            </label>
-            <div class="field" style="margin-top:14px"><label for="kPaste">or paste the secret key</label><input class="in" id="kPaste" type="password" autocomplete="off" placeholder="base58 secret or [1,2,3,…]"></div>
-            <div class="field" style="margin-top:14px"><label for="kWatch">or just check an address</label><input class="in" id="kWatch" autocomplete="off" placeholder="creator address (read-only)"></div>
-            <div class="err" id="eK"></div>
-          </div>
+    <!-- claim.exe -->
+    <section class="w" id="w-claim" data-app="claim" data-title="claim.exe — creator fees, no gas" data-icon="claim" style="--ww:720px;--wh:620px">
+      <div class="wb claim">
+        <p class="hint">load your creator key. it stays in this window, in memory, and is gone when you close the tab. you sign here; the treasury pays the network fee.</p>
+        <div class="gb"><div class="lg">1 · creator key</div>
+          <label class="drop small" id="kDrop"><div><b>drop your key file</b> or choose it · halo-creator-….json · never uploaded</div><input type="file" id="kFile" accept=".json,application/json,text/plain" class="sr"></label>
+          <div class="grid2"><label class="field"><span>or paste the secret key</span><input class="in" id="kPaste" type="password" autocomplete="off" placeholder="base58 or [1,2,3,…]"></label><label class="field"><span>or just check an address</span><input class="in" id="kWatch" autocomplete="off" placeholder="creator address (read-only)"></label></div>
+          <div class="err" id="eK"></div>
         </div>
-        <div class="win reveal">
-          <div class="bar"><span class="t">creator wallet</span><span class="r">— □ ×</span></div>
-          <div class="body" id="claimBody">
-            <div class="stat"><span class="l">creator</span><span id="cAddr" class="teal">no key loaded</span></div>
-            <div class="stat"><span class="l">waiting to be claimed</span><span class="big" id="cVault">—<small> SOL</small></span></div>
-            <div class="stat"><span class="l">in the creator wallet</span><span id="cWallet">— SOL</span></div>
-            <div class="row" style="margin-top:16px"><button class="btn" type="button" id="cClaim" disabled>claim, gas paid →</button><button class="btn ghost" type="button" id="cRefresh" disabled>refresh</button></div>
-            <div class="field" style="margin-top:20px"><label for="cTo">send everything in the creator wallet to</label><div class="row"><input class="in" id="cTo" autocomplete="off" placeholder="any solana address" style="flex:1"><button class="btn teal" type="button" id="cSend" disabled>send</button></div><span class="hint">sending to a wallet you use publicly links it to this coin. that part is up to you.</span></div>
-            <div class="err" id="eC"></div>
-            <div class="term" id="cTerm" style="min-height:0;margin-top:14px;display:none"></div>
-          </div>
+        <div class="gb"><div class="lg">2 · fees</div>
+          <div class="kv2"><span>creator</span><b id="cAddr" class="teal">no key loaded</b><span>waiting to be claimed</span><b id="cVault" class="amt">— SOL</b><span>in the creator wallet</span><b id="cWallet">— SOL</b></div>
+          <div class="row"><button class="bt def" type="button" id="cClaim" disabled>claim · gas paid</button><button class="bt" type="button" id="cRefresh" disabled>refresh</button></div>
+        </div>
+        <div class="gb"><div class="lg">3 · send it somewhere</div>
+          <div class="row"><input class="in" id="cTo" autocomplete="off" placeholder="any solana address" style="flex:1"><button class="bt" type="button" id="cSend" disabled>send all</button></div>
+          <span class="hint">sending to a wallet you use in public links it to this coin. that part is up to you.</span>
+        </div>
+        <div class="err" id="eC"></div><div class="term small" id="cTerm" hidden></div>
+      </div>
+    </section>
+
+    <!-- privacy.cpl -->
+    <section class="w" id="w-privacy" data-app="privacy" data-title="privacy properties" data-icon="privacy" style="--ww:600px;--wh:520px">
+      <div class="wb props">
+        <div class="tabs" id="ptabs" role="tablist"></div>
+        <div class="tabbody sunk-soft" id="ptab"></div>
+        <div class="navrow"><span class="grow"></span><button class="bt def" type="button" data-close>ok</button></div>
+      </div>
+    </section>
+
+    <!-- readme.txt -->
+    <section class="w" id="w-readme" data-app="readme" data-title="readme.txt — notepad" data-icon="readme" style="--ww:640px;--wh:540px">
+      <div class="menubar"><span>file</span><span>edit</span><span>search</span><span>help</span></div>
+      <div class="wb note-pad sunk" id="readmeBody" tabindex="0"></div>
+    </section>
+
+    <!-- cmd.exe -->
+    <section class="w" id="w-cmd" data-app="cmd" data-title="cmd.exe" data-icon="cmd" style="--ww:680px;--wh:420px">
+      <div class="wb cmd" id="cmdBody" tabindex="0"><div id="cmdOut"></div><div class="cmdline"><span>C:\HALO&gt;</span><input id="cmdIn" autocomplete="off" spellcheck="false" aria-label="command"></div></div>
+    </section>
+
+    <!-- my computer -->
+    <section class="w" id="w-pc" data-app="pc" data-title="system properties" data-icon="pc" style="--ww:560px;--wh:500px">
+      <div class="wb sys">
+        <div class="sysl"><img src="/assets/img/pfp-400.png" alt=""></div>
+        <div class="sysr">
+          <div class="lg2">system:</div><div>halo 98<br>second edition<br><span class="dim">4.10.1998</span></div>
+          <div class="lg2">registered to:</div><div>nobody<br><span class="dim">anonymous @ 33 MHz</span></div>
+          <div class="lg2">live:</div><div id="sysLive" class="dim">reading…</div>
         </div>
       </div>
-    </div>
-  </section>
+      <div class="sbar"><span id="sysTre">treasury —</span><button class="mlink" type="button" id="sysCopy">copy treasury address</button></div>
+    </section>
 
-  <section id="docs">
-    <div class="wrap">
-      <div class="kicker reveal">readme.txt</div>
-      <h2 class="reveal">the <b>fine print.</b></h2>
-      <div class="faq">
-        <details class="q reveal"><summary>what is halo?</summary><div class="a"><p>a pump.fun launchpad built around privacy you can check. you fill in a coin, your browser makes the creator key, halo's treasury pays the creation cost and a fresh wallet signs the launch. you never connect, sign or pay.</p></div></details>
-        <details class="q reveal"><summary>is it really free?</summary><div class="a"><p>yes. creating a pump.fun coin costs about <b id="docCost">0.02</b> SOL in account rent and network fees. the halo treasury pays it. there is no dev buy, so the coin starts with nobody holding it.</p></div></details>
-        <details class="q reveal"><summary>why is there a daily limit?</summary><div class="a"><p>every launch costs the treasury real SOL, so there are <b id="docCap">20</b> free launches per day (resets 00:00 UTC) and a few per visitor. instead of an account you do a few seconds of proof of work in your browser. it keeps bots from emptying the treasury without asking who you are.</p></div></details>
-        <details class="q reveal"><summary>who gets the creator fees?</summary><div class="a"><p>the creator key from step 3, and only it. pump.fun pays creator fees to that address on every trade, and halo takes no cut. claim them in <a class="lk" href="#claim">claim</a>: you sign with the key, the treasury pays the gas.</p></div></details>
-        <details class="q reveal"><summary>can halo take my fees or my coin?</summary><div class="a"><p>no. halo never sees the creator key, it never buys the coin, and the launch wallet ends with zero SOL. what halo does hold is its own treasury key, which only pays launch costs and claim fees.</p></div></details>
-        <details class="q reveal"><summary>what if i lose the creator key?</summary><div class="a"><p>the fees stay where they are, unclaimable. nobody can recover the key, including us. that is the price of a key nobody else ever had.</p></div></details>
-        <details class="q reveal"><summary>what can people still see?</summary><div class="a"><p>everything on solana is public: the coin, trades, the creator address, the launch wallet and that the halo treasury funded it. what they cannot see is a link to you, unless you make one, for example by sending the fees to a wallet you use in public.</p></div></details>
-        <details class="q reveal"><summary>does halo keep logs?</summary><div class="a"><p>halo stores each launch (the coin details and addresses, which are public anyway) and, for the daily limit only, a salted hash of your IP that becomes meaningless the next day and is then deleted. no accounts, no cookies, no analytics. the host still sees requests the way every host does.</p></div></details>
-        <details class="q reveal"><summary>is this financial advice?</summary><div class="a"><p>no. memecoins are extremely risky and most go to zero. halo is a tool. it is not affiliated with pump.fun.</p></div></details>
-        <details class="q reveal"><summary>is there a $HALO token?</summary><div class="a"><p id="docCa">not yet. when there is, its contract address appears at the bottom of this page and on our X.</p></div></details>
+    <!-- recycle bin -->
+    <section class="w" id="w-bin" data-app="bin" data-title="recycle bin" data-icon="bin" style="--ww:520px;--wh:300px">
+      <div class="wb list">
+        <table class="tbl"><thead><tr><th>name</th><th>original location</th><th>size</th></tr></thead><tbody>
+          <tr class="hov" data-msg="name"><td><img src="/assets/img/ico-readme-16.png" alt=""> your_name.txt</td><td>C:\YOU</td><td>0 KB</td></tr>
+          <tr class="hov" data-msg="logs"><td><img src="/assets/img/ico-readme-16.png" alt=""> visitor_logs.txt</td><td>C:\HALO</td><td>0 KB</td></tr>
+          <tr class="hov" data-msg="dev"><td><img src="/assets/img/ico-coins-16.png" alt=""> dev_bag.tok</td><td>C:\HALO\COINS</td><td>0 KB</td></tr>
+        </tbody></table>
       </div>
-    </div>
-  </section>
-</main>
+      <div class="sbar"><span>3 object(s) · 0 bytes</span><span>emptied, on purpose</span></div>
+    </section>
+  </div>
 
-<footer>
-  <div class="wrap">
-    <pre id="footArt" aria-hidden="true"></pre>
-    <div>
-      <div style="font: 400 20px var(--pix); color: var(--ink)">halo<span class="gold">_</span></div>
-      <div>no trackers. no cookies. no names.</div>
-      <div class="ca" id="footCa"><span class="dim">$HALO</span><code id="footCaCode"></code><button class="btn sm ghost" type="button" id="footCaCopy">copy</button><a class="lk" id="footCaBuy" target="_blank" rel="noopener noreferrer">pump.fun ↗</a></div>
-    </div>
-    <div style="text-align:right">
-      <a class="lk" id="footX" target="_blank" rel="noopener noreferrer" hidden>x ↗</a><br>
-      <span id="footStatus" class="dim">—</span><br><span class="dim">not affiliated with pump.fun</span>
+  <div class="menu start" id="startmenu" hidden>
+    <div class="band"><span>halo<b>98</b></span></div>
+    <div class="items">
+      <button data-open="launch"><img src="/assets/img/ico-launch-16.png" alt="">launch a coin</button>
+      <button data-open="coins"><img src="/assets/img/ico-coins-16.png" alt="">coins</button>
+      <button data-open="claim"><img src="/assets/img/ico-claim-16.png" alt="">claim fees</button>
+      <hr>
+      <button data-open="privacy"><img src="/assets/img/ico-privacy-16.png" alt="">privacy properties</button>
+      <button data-open="readme"><img src="/assets/img/ico-readme-16.png" alt="">readme</button>
+      <button data-open="cmd"><img src="/assets/img/ico-cmd-16.png" alt="">command prompt</button>
+      <button data-open="pc"><img src="/assets/img/ico-pc-16.png" alt="">system properties</button>
+      <hr>
+      <button data-open="welcome"><img src="/assets/img/ico-pc-16.png" alt="">welcome</button>
+      <button id="shutBtn"><img src="/assets/img/ico-warn-16.png" alt="">shut down…</button>
     </div>
   </div>
-</footer>
+  <div class="menu ctx" id="ctx" hidden>
+    <button data-act="arrange">arrange icons</button><button data-act="refresh">refresh</button><hr><button data-open="launch">new coin…</button><button data-open="pc">properties</button>
+  </div>
+  <div class="balloon" id="balloon" hidden><button class="bx" type="button" aria-label="close">×</button><b id="balT"></b><span id="balB"></span></div>
+
+  <footer class="taskbar">
+    <button class="startbtn" id="startBtn" type="button" aria-expanded="false"><img src="/assets/img/ico-pc-16.png" alt="">start</button>
+    <div class="tasks" id="tasks"></div>
+    <div class="tray" id="tray"><span class="dot" id="trayDot"></span><span id="trayTxt">…</span><span class="clock" id="clock">--:--</span></div>
+  </footer>
+</div>
+
+<div id="shutdown" hidden><div>it's now safe to turn off<br>your computer.</div><small>click anywhere to restart</small></div>
+<div id="dlg" class="w dlg" hidden role="alertdialog" aria-modal="true"><div class="tb"><span id="dlgT">halo</span><div class="tbb"><button data-x aria-label="close">×</button></div></div><div class="wb dlgb"><img id="dlgI" src="/assets/img/ico-warn.png" alt=""><div id="dlgB"></div></div><div class="navrow" id="dlgA"></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script src="/assets/js/vendor/nacl-fast.min.js"></script>
-<script type="module" src="/assets/js/main.js?v=1"></script>
+<script type="module" src="/assets/js/desk.js?v=2"></script>
 </body>
 </html>
