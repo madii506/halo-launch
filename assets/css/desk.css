@@ -423,3 +423,12 @@ body.saving .toast, body.saving .tip { display: none; }
   .menu.volpop { right: 6px; }
   .isound { left: 4vw; }
 }
+
+/* creator choice + wallet connect */
+.seg { display: flex; margin-top: 12px; flex-wrap: wrap; }
+.seg button { flex: 1; min-width: 120px; background: var(--face2); border: 0; color: var(--dim); padding: 8px 10px; font: 500 12px var(--mono); cursor: pointer; box-shadow: inset 1px 1px 0 var(--hi), inset -1px -1px 0 var(--lo); }
+.seg button i { display: block; font-style: normal; font-size: 10.5px; color: var(--mute); margin-top: 2px; }
+.seg button.on { background: #0c0c0f; color: var(--gold); box-shadow: inset 1px 1px 0 var(--lo), inset -1px -1px 0 var(--hi); }
+.wlist { display: grid; gap: 6px; }
+.wbtn { justify-content: flex-start; } .wbtn img { width: 20px; height: 20px; image-rendering: auto; }
+.wrow { margin-top: 0; } .wrow img { width: 28px; height: 28px; image-rendering: auto; } .wrow .addr { margin: 2px 0 0; font-size: 11.5px; }
