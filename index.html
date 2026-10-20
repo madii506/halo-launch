@@ -19,7 +19,7 @@
 <link rel="apple-touch-icon" href="/assets/img/icon-180.png?v=3">
 <link rel="preload" href="/assets/fonts/VT323-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/JetBrainsMono.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/desk.css?v=4">
+<link rel="stylesheet" href="/assets/css/desk.css?v=5">
 </head>
 <body class="booting">
 
@@ -112,7 +112,8 @@
             <div class="navrow"><span class="grow"></span><button class="bt" type="button" data-back>&lt; back</button><button class="bt def" type="button" id="n1">next &gt;</button></div>
           </div>
           <div class="step" data-s="2" id="s2">
-            <h3>the creator key</h3><p class="hint">this new wallet becomes the coin's creator. every creator fee lands in it. made right now, on your device.</p>
+            <h3>the creator</h3><p class="hint" id="s2hint">a brand-new key becomes the coin's creator. every creator fee lands in it. made right now, on your device.</p>
+            <div class="seg" id="modeSeg" role="tablist"><button type="button" data-mode="key" class="on">fresh key <i>free</i></button><button type="button" data-mode="own">my address <i>free</i></button><button type="button" data-mode="wallet">connect wallet <i>you pay</i></button></div>
             <div id="keyBox">
               <div class="gb"><div class="lg">creator key</div>
                 <span class="hint">address (public)</span><div class="addr" id="kAddr">…</div>
@@ -126,7 +127,16 @@
               <label class="field"><span>your own creator address</span><input class="in" id="fOwn" autocomplete="off" placeholder="a solana address you control"></label>
               <div class="note"><img src="/assets/img/ico-warn-16.png" alt="">an address you already use links the coin to you. that skips two of the six layers.</div>
             </div>
-            <button class="link" type="button" id="kToggle">use an address i already have instead</button>
+            <div id="walletBox" hidden>
+              <div class="gb"><div class="lg">wallet</div>
+                <div id="wList" class="wlist"></div>
+                <div id="wConn" hidden>
+                  <div class="row wrow"><img id="wIcon" alt=""><div><b id="wName"></b><div class="addr" id="wAddr"></div></div><span class="grow"></span><button class="bt" type="button" id="wOff">disconnect</button></div>
+                  <label class="field"><span>dev buy · optional · SOL</span><input class="in" id="wBuy" type="number" min="0" max="10" step="0.01" inputmode="decimal" placeholder="0 = no dev buy"></label>
+                </div>
+              </div>
+              <div class="note"><img src="/assets/img/ico-warn-16.png" alt="">your wallet signs and pays the launch (a little SOL, plus any dev buy). it becomes the creator and shows as the dev on the chart, so this coin is linked to that wallet. no daily limit.</div>
+            </div>
             <div class="err" id="e2"></div>
             <div class="navrow"><span class="grow"></span><button class="bt" type="button" data-back>&lt; back</button><button class="bt def" type="button" id="n2">next &gt;</button></div>
           </div>
@@ -162,6 +172,7 @@
         <p class="hint">load your creator key. it stays in this window, in memory, and is gone when you close the tab. you sign here; the treasury pays the network fee.</p>
         <div class="gb"><div class="lg">1 · creator key</div>
           <label class="drop small" id="kDrop"><div><b>drop your key file</b> or choose it · halo-creator-….json · never uploaded</div><input type="file" id="kFile" accept=".json,application/json,text/plain" class="sr"></label>
+          <div class="row"><button class="bt" type="button" id="cConn">connect wallet</button><span class="hint" id="cConnHint">if the creator is a wallet you launched with</span></div>
           <div class="grid2"><label class="field"><span>or paste the secret key</span><input class="in" id="kPaste" type="password" autocomplete="off" placeholder="base58 or [1,2,3,…]"></label><label class="field"><span>or just check an address</span><input class="in" id="kWatch" autocomplete="off" placeholder="creator address (read-only)"></label></div>
           <div class="err" id="eK"></div>
         </div>
@@ -350,6 +361,6 @@
 <div class="zoomr" id="zoomr" aria-hidden="true"></div>
 
 <script src="/assets/js/vendor/nacl-fast.min.js"></script>
-<script type="module" src="/assets/js/desk.js?v=6"></script>
+<script type="module" src="/assets/js/desk.js?v=7"></script>
 </body>
 </html>

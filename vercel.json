@@ -9,7 +9,7 @@
   "rewrites": [
     { "source": "/m/:id", "destination": "/api/halo?op=meta&id=:id" },
     { "source": "/i/:id", "destination": "/api/halo?op=img&id=:id" },
-    { "source": "/api/:op(status|pow|launch|launches|coins|claim|claimbuild|claimsend|withdrawbuild|withdrawsend|dryrun|tick)", "destination": "/api/halo?op=:op" }
+    { "source": "/api/:op(status|pow|launch|launches|coins|claim|claimbuild|claimsend|withdrawbuild|withdrawsend|dryrun|tick|walletbuild|walletsend|wclaimbuild|wclaimsend)", "destination": "/api/halo?op=:op" }
   ],
   "headers": [
     { "source": "/assets/fonts/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
