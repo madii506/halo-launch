@@ -1,0 +1,13 @@
+{
+  "name": "halo",
+  "private": true,
+  "description": "launch with layers of privacy. every one of them real.",
+  "engines": { "node": "22.x" },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.0",
+    "@pump-fun/pump-sdk": "4.2.0",
+    "@solana/web3.js": "^1.98.2",
+    "bn.js": "^5.2.2"
+  },
+  "overrides": { "rpc-websockets": { "uuid": "^11.1.0" } }
+}
