@@ -14,19 +14,23 @@
 <meta name="twitter:title" content="HALO">
 <meta name="twitter:description" content="launch with layers of privacy. every one of them real.">
 <meta name="twitter:image" content="/assets/img/og.jpg">
-<link rel="icon" type="image/png" sizes="64x64" href="/assets/img/icon-64.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/assets/img/icon-32.png">
-<link rel="apple-touch-icon" href="/assets/img/icon-180.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/assets/img/icon-64.png?v=2">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/img/icon-32.png?v=2">
+<link rel="apple-touch-icon" href="/assets/img/icon-180.png?v=2">
 <link rel="preload" href="/assets/fonts/VT323-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/JetBrainsMono.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/desk.css?v=2">
+<link rel="stylesheet" href="/assets/css/desk.css?v=3">
 </head>
 <body class="booting">
 
 <!-- 1. the room: a PC on a desk at night, the boot on its CRT -->
 <div id="intro" aria-label="HALO boot">
   <canvas id="room" aria-hidden="true"></canvas>
-  <div class="ihint" id="ihint"><span>type <b>help</b></span><span>press <kbd>enter</kbd> to go in</span><span><kbd>esc</kbd> skip</span></div>
+  <div class="lb top" aria-hidden="true"></div><div class="lb bot" aria-hidden="true"></div>
+  <div class="icap" id="icap" aria-live="polite"></div>
+  <button class="iskip" id="iskip" type="button">skip ›</button>
+  <div class="iload" id="iload" aria-hidden="true">_</div>
+  <div class="ihint" id="ihint"><span>type <b>help</b> for commands</span><span>press <kbd>enter</kbd> to go in</span></div>
   <div class="itouch" id="itouch"><button type="button" data-go="">enter halo ↵</button><button type="button" data-go="launch">launch</button><button type="button" data-go="coins">coins</button><button type="button" data-go="claim">claim</button></div>
   <pre class="ifall" id="ifall" hidden></pre>
   <div class="iflash" id="iflash"></div>
@@ -249,6 +253,6 @@
 <div class="toast" id="toast" role="status"></div>
 
 <script src="/assets/js/vendor/nacl-fast.min.js"></script>
-<script type="module" src="/assets/js/desk.js?v=2"></script>
+<script type="module" src="/assets/js/desk.js?v=3"></script>
 </body>
 </html>
