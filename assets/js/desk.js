@@ -306,7 +306,7 @@ function initDesk() {
 
 // ================================================================ live data
 let STATUS = null, COINS = [], SEEN = null;
-const WHY = { treasury: 'the treasury is empty right now. launches open again when it is refilled.', cap: "today's free launches are gone. it resets at 00:00 UTC.", paused: 'launches are paused for a moment.', rpc: "solana can't be reached right now." };
+const WHY = { treasury: 'free launches are paused right now. you can still launch with your own wallet.', cap: "today's free launches are used up. back at 00:00 UTC, or launch with your own wallet.", paused: 'launches are paused for a moment.', rpc: "solana can't be reached right now." };
 async function status() {
   try { STATUS = await api('status'); } catch { STATUS = null; }
   const s = STATUS;
