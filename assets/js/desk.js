@@ -1,6 +1,7 @@
 // HALO 98: the room, the boot on the CRT, then a dark old-school desktop where every window works.
-import { install } from './apps98.js?v=2';
-import { createSound } from './sound98.js?v=3';
+import { install } from './apps98.js?v=3';
+import { install as installTools } from './tools98.js?v=1';
+import { createSound } from './sound98.js?v=4';
 import * as WAL from './wallet98.js?v=1';
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -46,7 +47,7 @@ async function boot() {
   try {
     const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
     if (!gl) throw new Error('no webgl');
-    const { run } = await import('./intro3d.js?v=8');
+    const { run } = await import('./intro3d.js?v=9');
     const statusP = fetch('/api/status').then(r => r.json()).catch(() => null);
     const sb = $('#isound');
     if (sb) { SOUND.onChange(st => { sb.textContent = st.muted ? '♪ sound off' : '♪ sound on'; sb.setAttribute('aria-pressed', String(!st.muted)); });
@@ -299,6 +300,13 @@ function initDesk() {
   $('#coinsRefresh').onclick = () => coins();
   HOOKS = install({ $, $$, esc, WM, dialog, toast, ls, MOBILE, copy, ago, usd, sfx: (n, a) => SOUND.sfx(n, a), getStatus: () => STATUS, getCoins: () => COINS, useImage, openClaimWatch, setWall, pauseWall, closeMenus });
   Object.assign(APPS, { display: HOOKS.display, paint: HOOKS.paint, sweeper: HOOKS.sweeper, coin: HOOKS.coin, run: HOOKS.run });
+  const TOOLS = installTools({ $, esc, WM, toast, useImage, sound: SOUND, sfx: (n, a) => SOUND.sfx(n, a) });
+  Object.assign(APPS, { strip: TOOLS.strip, scan: TOOLS.scan, cd: TOOLS.cd });
+  // drop a photo anywhere on the desktop: strip.exe opens with it
+  const dz = $('#desk');
+  dz.addEventListener('dragover', e => { if (!e.target.closest('.w') && [...(e.dataTransfer.items || [])].some(i => i.kind === 'file')) { e.preventDefault(); dz.classList.add('dropping'); } });
+  dz.addEventListener('dragleave', e => { if (e.target === dz || !dz.contains(e.relatedTarget)) dz.classList.remove('dropping'); });
+  dz.addEventListener('drop', e => { dz.classList.remove('dropping'); if (e.target.closest('.w')) return; const f = e.dataTransfer.files[0]; if (!f || !/^image\//.test(f.type)) return; e.preventDefault(); WM.open('strip', f); });
   status(); coins(true);
   setInterval(status, 20000); setInterval(() => coins(false), 25000);
   setWall(WALL.want);
@@ -604,7 +612,14 @@ function readme() {
     ['or launch with your own wallet', 'pick "connect wallet" in the creator step. your wallet signs and pays the launch (a little SOL) and can add a dev buy in the same transaction. it becomes the creator and shows as the dev on the chart, so the coin is linked to that wallet. the coin\'s own key is still made in your browser. there is no daily limit for wallet launches. phantom, solflare, backpack and other wallets that support the wallet standard work. on a phone, open the site inside your wallet\'s browser.'],
     ['what stays public', 'everything on solana is public: the coin, its trades, the creator address, the launch wallet and the fact that the halo treasury funded it. what is not public is any link from those to you, unless you make one.'],
     ['keep your key safe', 'the creator key controls the fees. never share the secret. halo will never ask for it: claim.exe signs in your browser and only sends signatures. if you lose the key, the fees stay unclaimable. nobody can recover it, including us.'],
-    ['commands', 'in the room, type on the screen: launch, coins, claim, layers or docs to go straight there, or press enter to just go in. lamp and storm do what you think. on the desktop, cmd.exe takes launch, coins, claim, status, privacy, paint, sweeper, color, scr, readme, whoami, ver, cls and exit. type help in either.'],
+    ['tools on the desktop', [
+      'strip.exe   drop any photo to see what it carries besides the picture: camera, lens, time, the place it was taken. then keep a clean copy, or use it as a coin image. you can also drop a photo anywhere on the desktop.',
+      'scan.exe    a live check of this page: every request it made, every server it reached, cookies, trackers and the security policy.',
+      'cd player   the soundtrack, made by code in your browser while you listen. two tracks, a volume and a visualizer.',
+      'paint.exe   draw a 32 x 32 coin and send it straight to the launch wizard.',
+      'sweeper     tracker sweeper. clear the board without hitting a tracker.',
+    ]],
+    ['commands', 'in the room, type on the screen: launch, coins, claim, layers or docs to go straight there, or press enter to just go in. lamp and storm do what you think. on the desktop, cmd.exe takes launch, coins, claim, status, privacy, paint, sweeper, strip, scan, music, color, scr, readme, whoami, ver, cls and exit. type help in either.'],
   ];
   const Q = [
     ['is it really free?', 'yes. creating a pump.fun coin costs a little SOL in account rent and network fees, and the halo treasury pays it. you pay nothing and sign nothing.'],
@@ -627,11 +642,12 @@ function cmd() {
   print('halo [version 4.10.1998]', 'm'); print('(c) nobody. all rights unclaimed.', 'm'); print('&nbsp;'); print('type <span class="g">help</span> for commands.');
   $('#cmdBody').addEventListener('click', () => inp.focus());
   const C = {
-    help: () => [['launch', 'open the launch wizard'], ['coins', 'list the newest coins'], ['claim', 'open claim.exe'], ['status', 'treasury and launches'], ['privacy', 'the six layers'], ['paint', 'draw a coin'], ['sweeper', 'tracker sweeper'], ['color', 'color amber|teal|rose|ice|mono'], ['scr', 'start the screensaver'], ['readme', 'open readme.txt'], ['whoami', 'who are you?'], ['ver', 'version'], ['cls', 'clear the screen'], ['exit', 'close this window']].forEach(([a, b]) => print(`<span class="g">${a.padEnd(9, ' ')}</span><span class="m">${b}</span>`)),
+    help: () => [['launch', 'open the launch wizard'], ['coins', 'list the newest coins'], ['claim', 'open claim.exe'], ['status', 'treasury and launches'], ['privacy', 'the six layers'], ['paint', 'draw a coin'], ['sweeper', 'tracker sweeper'], ['color', 'color amber|teal|rose|ice|mono'], ['scr', 'start the screensaver'], ['readme', 'open readme.txt'], ['strip', 'see and remove what a photo carries'], ['scan', 'check what this page talks to'], ['music', 'open the cd player'], ['whoami', 'who are you?'], ['ver', 'version'], ['cls', 'clear the screen'], ['exit', 'close this window']].forEach(([a, b]) => print(`<span class="g">${a.padEnd(9, ' ')}</span><span class="m">${b}</span>`)),
     status: () => { const s = STATUS; if (!s) return print('offline.', 'm'); print(`network    ${esc(s.network)}`); print(`launches   ${s.ready ? '<span class="ok">open</span>' : '<span class="g">paused for now</span>'}`); },
     coins: () => { if (!COINS.length) return print('no coins yet. type <span class="g">launch</span> to make the first.', 'm'); COINS.slice(0, 8).forEach(c => print(`<span class="g">$${esc(c.symbol).padEnd(10, ' ')}</span>${esc(c.name).slice(0, 22).padEnd(23, ' ')}<span class="m">${ago(c.at).padEnd(5, ' ')}</span>${c.mcapUsd ? usd(c.mcapUsd) : ''}`)); },
     launch: () => { print('starting launch.exe …', 'm'); WM.open('launch'); }, claim: () => { print('starting claim.exe …', 'm'); WM.open('claim'); },
     privacy: () => WM.open('privacy'), layers: () => WM.open('privacy'), readme: () => WM.open('readme'), docs: () => WM.open('readme'),
+    strip: () => WM.open('strip'), scan: () => WM.open('scan'), cd: () => WM.open('cd'), music: () => WM.open('cd'), play: () => WM.open('cd'),
     whoami: () => print('nobody', 'ok'), ver: () => print('halo [version 4.10.1998]'), date: () => print(new Date().toString()), time: () => print(new Date().toLocaleTimeString()),
     cls: () => { out.innerHTML = ''; }, clear: () => { out.innerHTML = ''; }, exit: () => WM.close('cmd'),
     dir: () => ['launch.exe', 'coins.db', 'claim.exe', 'paint.exe', 'sweeper.exe', 'privacy.cpl', 'display.cpl', 'readme.txt'].forEach(f => print(`10-20-98  12:00a    ${f}`)),
@@ -645,7 +661,7 @@ function cmd() {
     if (e.key !== 'Enter') return; const raw = inp.value; inp.value = ''; print(`<span class="ok">C:\\HALO&gt;</span> ${esc(raw)}`);
     const [c, ...rest] = raw.trim().split(/\s+/); const k = (c || '').toLowerCase(); if (!k) return;
     if (k === 'echo') return print(esc(rest.join(' ')));
-    if (k === 'start' && rest[0]) { const a = { 'launch.exe': 'launch', 'claim.exe': 'claim', 'coins.db': 'coins', 'readme.txt': 'readme', 'privacy.cpl': 'privacy', 'paint.exe': 'paint', 'sweeper.exe': 'sweeper', 'display.cpl': 'display' }[rest[0].toLowerCase()] || rest[0].toLowerCase(); return WM.open(a); }
+    if (k === 'start' && rest[0]) { const a = { 'launch.exe': 'launch', 'claim.exe': 'claim', 'coins.db': 'coins', 'readme.txt': 'readme', 'privacy.cpl': 'privacy', 'paint.exe': 'paint', 'sweeper.exe': 'sweeper', 'display.cpl': 'display', 'strip.exe': 'strip', 'scan.exe': 'scan', 'cdplayer.exe': 'cd' }[rest[0].toLowerCase()] || rest[0].toLowerCase(); return WM.open(a); }
     (C[k] || (() => print(`'${esc(k)}' is not recognized as an internal or external command.`, 'm')))(rest);
   });
 }

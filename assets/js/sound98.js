@@ -11,7 +11,7 @@ const hz = m => 440 * Math.pow(2, (m - 69) / 12);
 
 export function createSound(store) {
   const get = (k, d) => { try { const v = store.get(k); return v == null ? d : v; } catch { return d; } };
-  let ctx = null, master, musicBus, sfxBus, verb, echo, noiseBuf, rain = null, started = false, timer = 0;
+  let ctx = null, master, musicBus, sfxBus, verb, echo, noiseBuf, rain = null, started = false, timer = 0, analyser = null;
   let muted = get('halo:mute', '0') === '1', vol = Math.max(0, Math.min(1, parseFloat(get('halo:vol', '.7')) || .7)), scene = 'intro';
   let step = 0, nextT = 0, seed = 7;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -31,6 +31,7 @@ export function createSound(store) {
     ctx.onstatechange = () => emit();
     master = ctx.createGain(); master.gain.value = muted ? 0 : vol;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3; master.connect(comp).connect(ctx.destination);
+    analyser = ctx.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = .78; comp.connect(analyser);   // the cd player's visualizer listens here
     verb = ctx.createConvolver(); verb.buffer = impulse(2.2, 3.2); const vg = ctx.createGain(); vg.gain.value = .14; verb.connect(vg).connect(master);
     echo = ctx.createDelay(1.5); echo.delayTime.value = BEAT * .75; const fb = ctx.createGain(); fb.gain.value = .18; const eg = ctx.createGain(); eg.gain.value = .16;
     echo.connect(fb).connect(echo); echo.connect(eg).connect(master);
@@ -131,6 +132,7 @@ export function createSound(store) {
     setMuted(v) { muted = !!v; try { store.set('halo:mute', muted ? '1' : '0'); } catch {} if (ctx) { const t = ctx.currentTime; master.gain.cancelScheduledValues(t); master.gain.setTargetAtTime(muted ? 0 : vol, t, .08); } emit(); },
     setVolume(v) { vol = Math.max(0, Math.min(1, v)); try { store.set('halo:vol', String(vol)); } catch {} if (ctx && !muted) master.gain.setTargetAtTime(vol, ctx.currentTime, .05); emit(); },
     get muted() { return muted; }, get volume() { return vol; }, get on() { return running(); },
+    analyser: () => analyser, sceneName: () => scene,
     onChange(f) { listeners.add(f); f({ muted, vol, on: running() }); return () => listeners.delete(f); },
   };
 }

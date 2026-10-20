@@ -342,7 +342,7 @@ export function install(X) {
   // ================================================================ run…
   const RUN = { launch: 'launch', 'launch.exe': 'launch', coins: 'coins', 'coins.db': 'coins', claim: 'claim', 'claim.exe': 'claim', paint: 'paint', 'paint.exe': 'paint', mspaint: 'paint',
     sweeper: 'sweeper', 'sweeper.exe': 'sweeper', winmine: 'sweeper', minesweeper: 'sweeper', cmd: 'cmd', 'cmd.exe': 'cmd', command: 'cmd', readme: 'readme', 'readme.txt': 'readme', notepad: 'readme', help: 'readme',
-    privacy: 'privacy', 'privacy.cpl': 'privacy', display: 'display', 'desk.cpl': 'display', control: 'display', sysdm: 'pc', 'sysdm.cpl': 'pc', welcome: 'welcome', bin: 'bin', recycle: 'bin' };
+    privacy: 'privacy', 'privacy.cpl': 'privacy', display: 'display', 'desk.cpl': 'display', control: 'display', sysdm: 'pc', 'sysdm.cpl': 'pc', welcome: 'welcome', bin: 'bin', recycle: 'bin', strip: 'strip', 'strip.exe': 'strip', exif: 'strip', scan: 'scan', 'scan.exe': 'scan', cd: 'cd', cdplayer: 'cd', 'cdplayer.exe': 'cd', music: 'cd' };
   $('#runList').innerHTML = Object.keys(RUN).map(k => `<option value="${k}">`).join('');
   const go = () => {
     const v = $('#runIn').value.trim().toLowerCase(); if (!v) return;
