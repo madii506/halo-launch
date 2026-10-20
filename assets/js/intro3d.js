@@ -302,7 +302,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   }
   at(120, () => { say(['', C.ink]); say([['press ', C.dim], ['DEL', C.ink], [' to enter setup. nobody ever does.', C.dim]]); });
   at(900, () => term.clear());
-  at(220, () => say([['starting halo 98 …', C.ink]]));
+  at(220, () => say([['starting halo …', C.ink]]));
   at(420, () => { say(['', C.ink]); say([['C:\\> ', C.ok], ['load layers', C.white]]); });
   for (const [num, name, what] of LAYERS) {
     const label = ` ${num} ${name} `.padEnd(13, '.') + ' ', text = what.padEnd(29, ' '); let i;
@@ -361,7 +361,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     if (['launch', 'coins', 'claim', 'layers', 'docs'].includes(c)) return dive(c);
     if (c === 'help' || c === '?' || c === 'dir') { [[['launch ', C.gold], ['launch a coin, free', C.dim]], [['coins  ', C.gold], ['every coin launched on halo', C.dim]], [['claim  ', C.gold], ['claim creator fees, no gas', C.dim]], [['layers ', C.gold], ['what stays private, and what does not', C.dim]], [['lamp   ', C.gold], ['the desk lamp, on or off', C.dim]], [['enter  ', C.gold], ['go in', C.dim]]].forEach(h => say(h)); return; }
     if (c === 'whoami') { say(['nobody', C.ok]); return; }
-    if (c === 'ver') { say(['halo 98 [version 4.10.1998]', C.ink]); return; }
+    if (c === 'ver') { say(['halo [version 4.10.1998]', C.ink]); return; }
     if (c === 'date' || c === 'time') { say([new Date().toString().slice(0, 24), C.ink]); return; }
     if (c === 'cls' || c === 'clear') { term.clear(); term.logo = 1; return; }
     if (c === 'sudo' || c.startsWith('sudo ')) { say(['nice try. there is no root here, only nobody.', C.dim]); return; }
@@ -398,10 +398,19 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
 
   let last = performance.now(), started = false;
   // seek(seconds, freeze) is for checking single frames of the film; the site never calls it
-  const api = { go: c => dive(c), phase: () => st.phase, skip, seek: (sec, freeze) => { st.t0 = performance.now() - sec * 1000; st.freeze = freeze ? sec : null; }, hold: ms => { st.hold = ms == null ? null : st.diveT + ms; } };
+  const api = { go: c => dive(c), phase: () => st.phase, skip, seek: (sec, freeze) => { st.t0 = performance.now() - sec * 1000; st.freeze = freeze ? sec : null; }, hold: ms => { st.hold = ms == null ? null : st.diveT + ms; },
+    // frame grabs for the launch video: one render per call, read straight off the canvas
+    pause: v => { st.paused = !!v; },
+    shot: (sec, q = .93) => { if (sec != null) { st.t0 = performance.now() - sec * 1000; st.freeze = sec; } step(performance.now()); return canvas.toDataURL('image/jpeg', q); },
+    termShot: (sec, q = .93) => { st.noRender = true; if (sec != null) { st.t0 = performance.now() - sec * 1000; st.freeze = sec; } step(performance.now()); st.noRender = false; return term.c.toDataURL('image/jpeg', q); },
+    diveShot: (ms, q = .93) => { st.hold = st.diveT + ms; step(performance.now()); return st.done ? null : canvas.toDataURL('image/jpeg', q); } };
   function frame(now) {
     if (st.done) return;
     requestAnimationFrame(frame);
+    if (st.paused) return;
+    step(now);
+  }
+  function step(now) {
     if (!started) { started = true; st.t0 = now; }
     NOW = st.hold != null ? st.hold : st.freeze != null ? st.t0 + st.freeze * 1000 : now;
     const dt = Math.min(.05, (now - last) / 1000); last = now;
@@ -453,7 +462,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
       P.keys.instanceMatrix.needsUpdate = true;
     }
     term.draw(NOW, dt);
-    composer.render();
+    if (!st.noRender) composer.render();
   }
   function cleanup() { removeEventListener('keydown', key); removeEventListener('resize', resize); removeEventListener('pointermove', pm); setTimeout(() => { renderer.dispose(); composer.dispose && composer.dispose(); }, 1200); }
   requestAnimationFrame(frame);

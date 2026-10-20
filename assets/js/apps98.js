@@ -55,7 +55,7 @@ export function install(X) {
     const acc = cs.getPropertyValue('--gold').trim() || '#f2b84b', t1 = cs.getPropertyValue('--tb1').trim(), t2 = cs.getPropertyValue('--tb2').trim();
     pg.fillStyle = '#18181c'; pg.fillRect(22, 26, W - 44, H - 50);
     const gr = pg.createLinearGradient(22, 0, W - 22, 0); gr.addColorStop(0, t1 || '#2d1f06'); gr.addColorStop(1, t2 || '#a8731c'); pg.fillStyle = gr; pg.fillRect(25, 29, W - 50, 14);
-    pg.fillStyle = '#fff2d2'; pg.font = '700 9px JBM, monospace'; pg.fillText('halo 98', 30, 39);
+    pg.fillStyle = '#fff2d2'; pg.font = '700 9px JBM, monospace'; pg.fillText('halo', 30, 39);
     pg.strokeStyle = acc; pg.strokeRect(W - 86, H - 46, 54, 16); pg.fillStyle = acc; pg.fillText('ok', W - 64, H - 35);
     pg.fillStyle = '#8b867a'; pg.fillText('launch with layers', 32, 62); pg.fillText('of privacy.', 32, 74);
     if (D.crt) { pg.fillStyle = 'rgba(0,0,0,.25)'; for (let y = 0; y < H; y += 3) pg.fillRect(0, y, W, 1); }
@@ -64,7 +64,7 @@ export function install(X) {
   // ================================================================ screensavers
   function liveLine() {
     const s = X.getStatus(), c = X.getCoins()[0];
-    const parts = ['halo 98'];
+    const parts = ['halo'];
     if (s) parts.push(s.ready ? 'launches open' : 'launches paused');
     if (c) parts.push(`newest: $${c.symbol}`);
     parts.push('no names', 'no keys', 'every layer real');

@@ -1,5 +1,5 @@
 // HALO 98: the room, the boot on the CRT, then a dark old-school desktop where every window works.
-import { install } from './apps98.js?v=1';
+import { install } from './apps98.js?v=2';
 import { createSound } from './sound98.js?v=3';
 import * as WAL from './wallet98.js?v=1';
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -46,7 +46,7 @@ async function boot() {
   try {
     const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
     if (!gl) throw new Error('no webgl');
-    const { run } = await import('./intro3d.js?v=5');
+    const { run } = await import('./intro3d.js?v=6');
     const statusP = fetch('/api/status').then(r => r.json()).catch(() => null);
     const sb = $('#isound');
     if (sb) { SOUND.onChange(st => { sb.textContent = st.muted ? '♪ sound off' : '♪ sound on'; sb.setAttribute('aria-pressed', String(!st.muted)); });
@@ -589,13 +589,13 @@ function readme() {
     ['does halo keep logs?', 'halo stores each launch (coin details and addresses, all public anyway) and, for the daily limit only, a salted hash of your IP that is useless the next day and then deleted. no accounts, no cookies, no analytics. the host still sees requests the way every host does.'],
     ['is this financial advice?', 'no. memecoins are extremely risky and most go to zero. halo is a tool, not affiliated with pump.fun.'],
   ];
-  $('#readmeBody').innerHTML = `<h5>README.TXT  ·  halo 98</h5><p>launch with layers of privacy. every one of them real.\n</p>` + Q.map(([q, a]) => `<h5>> ${esc(q)}</h5><p>${esc(a)}</p>`).join('');
+  $('#readmeBody').innerHTML = `<h5>README.TXT  ·  halo</h5><p>launch with layers of privacy. every one of them real.\n</p>` + Q.map(([q, a]) => `<h5>> ${esc(q)}</h5><p>${esc(a)}</p>`).join('');
 }
 // ================================================================ cmd.exe
 function cmd() {
   const out = $('#cmdOut'), inp = $('#cmdIn');
   const print = (h, cls) => { const d = document.createElement('div'); if (cls) d.className = cls; d.innerHTML = h; out.appendChild(d); $('#cmdBody').scrollTop = 1e9; };
-  print('halo 98 [version 4.10.1998]', 'm'); print('(c) nobody. all rights unclaimed.', 'm'); print('&nbsp;'); print('type <span class="g">help</span> for commands.');
+  print('halo [version 4.10.1998]', 'm'); print('(c) nobody. all rights unclaimed.', 'm'); print('&nbsp;'); print('type <span class="g">help</span> for commands.');
   $('#cmdBody').addEventListener('click', () => inp.focus());
   const C = {
     help: () => [['launch', 'open the launch wizard'], ['coins', 'list the newest coins'], ['claim', 'open claim.exe'], ['status', 'treasury and launches'], ['privacy', 'the six layers'], ['paint', 'draw a coin'], ['sweeper', 'tracker sweeper'], ['color', 'color amber|teal|rose|ice|mono'], ['scr', 'start the screensaver'], ['readme', 'open readme.txt'], ['whoami', 'who are you?'], ['ver', 'version'], ['cls', 'clear the screen'], ['exit', 'close this window']].forEach(([a, b]) => print(`<span class="g">${a.padEnd(9, ' ')}</span><span class="m">${b}</span>`)),
@@ -603,7 +603,7 @@ function cmd() {
     coins: () => { if (!COINS.length) return print('no coins yet. type <span class="g">launch</span> to make the first.', 'm'); COINS.slice(0, 8).forEach(c => print(`<span class="g">$${esc(c.symbol).padEnd(10, ' ')}</span>${esc(c.name).slice(0, 22).padEnd(23, ' ')}<span class="m">${ago(c.at).padEnd(5, ' ')}</span>${c.mcapUsd ? usd(c.mcapUsd) : ''}`)); },
     launch: () => { print('starting launch.exe …', 'm'); WM.open('launch'); }, claim: () => { print('starting claim.exe …', 'm'); WM.open('claim'); },
     privacy: () => WM.open('privacy'), layers: () => WM.open('privacy'), readme: () => WM.open('readme'), docs: () => WM.open('readme'),
-    whoami: () => print('nobody', 'ok'), ver: () => print('halo 98 [version 4.10.1998]'), date: () => print(new Date().toString()), time: () => print(new Date().toLocaleTimeString()),
+    whoami: () => print('nobody', 'ok'), ver: () => print('halo [version 4.10.1998]'), date: () => print(new Date().toString()), time: () => print(new Date().toLocaleTimeString()),
     cls: () => { out.innerHTML = ''; }, clear: () => { out.innerHTML = ''; }, exit: () => WM.close('cmd'),
     dir: () => ['launch.exe', 'coins.db', 'claim.exe', 'paint.exe', 'sweeper.exe', 'privacy.cpl', 'display.cpl', 'readme.txt'].forEach(f => print(`10-20-98  12:00a    ${f}`)),
     sudo: () => print('nice try. there is no root here, only nobody.', 'm'),
