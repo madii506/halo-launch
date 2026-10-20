@@ -19,7 +19,7 @@
 <link rel="apple-touch-icon" href="/assets/img/icon-180.png?v=3">
 <link rel="preload" href="/assets/fonts/VT323-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/JetBrainsMono.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/desk.css?v=5">
+<link rel="stylesheet" href="/assets/css/desk.css?v=6">
 </head>
 <body class="booting">
 
@@ -53,6 +53,9 @@
     <button class="ic" data-open="cmd" role="listitem"><img src="/assets/img/ico-cmd.png" alt=""><span>cmd.exe</span></button>
     <button class="ic" data-open="paint" role="listitem"><img src="/assets/img/ico-paint.png" alt=""><span>paint.exe</span></button>
     <button class="ic" data-open="sweeper" role="listitem"><img src="/assets/img/ico-sweeper.png" alt=""><span>sweeper.exe</span></button>
+    <button class="ic" data-open="strip" role="listitem"><img src="/assets/img/ico-strip.png" alt=""><span>strip.exe</span></button>
+    <button class="ic" data-open="scan" role="listitem"><img src="/assets/img/ico-scan.png" alt=""><span>scan.exe</span></button>
+    <button class="ic" data-open="cd" role="listitem"><img src="/assets/img/ico-cd.png" alt=""><span>cd player</span></button>
     <button class="ic" data-open="bin" role="listitem"><img src="/assets/img/ico-bin.png" alt=""><span>recycle bin</span></button>
     <button class="ic" data-open="x" role="listitem" id="icX" hidden><img src="/assets/img/ico-x.png" alt=""><span>halo on x.url</span></button>
   </div>
@@ -196,6 +199,43 @@
       </div>
     </section>
 
+    <!-- strip.exe -->
+    <section class="w" id="w-strip" data-app="strip" data-title="strip.exe — what your photo carries" data-icon="strip" style="--ww:700px;--wh:610px">
+      <div class="wb stripw">
+        <p class="hint">drop any photo. see what it carries besides the picture, then keep a clean copy. it all happens in this window. nothing is uploaded.</p>
+        <label class="drop" id="sDrop"><div class="pv" id="sPv"><pre class="asciiprev">  drop
+  a photo
+  here</pre></div><div><b>choose a photo</b> or drop it here<br><span class="hint">straight from a phone or camera shows the most · jpg, png, webp</span><br><span class="hint" id="sNote"></span></div><input type="file" id="sFile" accept="image/*" class="sr"></label>
+        <div class="err" id="sErr"></div>
+        <div class="grid2 sgrid">
+          <div class="gb"><div class="lg">before · the file as it was</div><div class="kv2" id="sBefore"><span class="dim">no photo yet</span></div></div>
+          <div class="gb"><div class="lg">after · redrawn in your browser</div><div class="kv2" id="sAfter"><span class="dim">—</span></div></div>
+        </div>
+        <div class="row"><button class="bt def" type="button" id="sSave" disabled>save clean copy</button><button class="bt" type="button" id="sUse" disabled>use as coin image ›</button></div>
+      </div>
+    </section>
+
+    <!-- scan.exe -->
+    <section class="w" id="w-scan" data-app="scan" data-title="scan.exe — what this page talks to" data-icon="scan" style="--ww:640px;--wh:560px">
+      <div class="wb scanw">
+        <p class="hint">a live check of this page, run in your browser: every request it made, every server it reached, cookies, trackers and the security policy.</p>
+        <div class="scanbar sunk"><i id="scanBar"></i></div>
+        <div class="term small" id="scanOut"></div>
+        <div id="scanTbl"></div>
+        <div class="row"><button class="bt def" type="button" id="scanAgain">scan again</button><span class="hint">nothing is sent. the results stay in this window.</span></div>
+      </div>
+    </section>
+
+    <!-- cd player -->
+    <section class="w" id="w-cd" data-app="cd" data-title="cd player — halo" data-icon="cd" style="--ww:500px;--wh:330px">
+      <div class="wb cdw">
+        <div class="cdtop"><div class="cdled sunk"><span id="cdTrack">02</span><span id="cdTime">--:--</span></div><canvas id="cdViz" width="600" height="150"></canvas></div>
+        <div class="cdname" id="cdName"></div>
+        <div class="row cdbtns"><button class="bt" type="button" id="cdPrev" aria-label="previous track">⏮</button><button class="bt def" type="button" id="cdPlay">▶ play</button><button class="bt" type="button" id="cdNext" aria-label="next track">⏭</button><label class="cdvol"><span>vol</span><input type="range" id="cdVol" min="0" max="100" value="70"></label></div>
+        <p class="hint">no file plays here. every note is made by code in your browser, live, while you listen.</p>
+      </div>
+    </section>
+
     <!-- readme.txt -->
     <section class="w" id="w-readme" data-app="readme" data-title="readme.txt — notepad" data-icon="readme" style="--ww:760px;--wh:600px">
       <div class="menubar"><span>file</span><span>edit</span><span>search</span><span>help</span></div>
@@ -322,6 +362,9 @@
     <hr>
     <button type="button" data-open="paint"><img src="/assets/img/ico-paint-16.png" alt="">paint</button>
     <button type="button" data-open="sweeper"><img src="/assets/img/ico-sweeper-16.png" alt="">tracker sweeper</button>
+    <button type="button" data-open="strip"><img src="/assets/img/ico-strip-16.png" alt="">strip a photo</button>
+    <button type="button" data-open="scan"><img src="/assets/img/ico-scan-16.png" alt="">scan this page</button>
+    <button type="button" data-open="cd"><img src="/assets/img/ico-cd-16.png" alt="">cd player</button>
     <button type="button" data-open="cmd"><img src="/assets/img/ico-cmd-16.png" alt="">command prompt</button>
     <button type="button" data-open="readme"><img src="/assets/img/ico-readme-16.png" alt="">notepad</button>
   </div>
@@ -360,6 +403,6 @@
 <div class="zoomr" id="zoomr" aria-hidden="true"></div>
 
 <script src="/assets/js/vendor/nacl-fast.min.js"></script>
-<script type="module" src="/assets/js/desk.js?v=11"></script>
+<script type="module" src="/assets/js/desk.js?v=12"></script>
 </body>
 </html>
