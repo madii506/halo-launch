@@ -46,7 +46,7 @@ async function boot() {
   try {
     const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
     if (!gl) throw new Error('no webgl');
-    const { run } = await import('./intro3d.js?v=7');
+    const { run } = await import('./intro3d.js?v=8');
     const statusP = fetch('/api/status').then(r => r.json()).catch(() => null);
     const sb = $('#isound');
     if (sb) { SOUND.onChange(st => { sb.textContent = st.muted ? '♪ sound off' : '♪ sound on'; sb.setAttribute('aria-pressed', String(!st.muted)); });
@@ -578,18 +578,47 @@ function privacy() {
 }
 // ================================================================ readme.txt
 function readme() {
-  const Q = [
-    ['what is halo?', 'a pump.fun launchpad built around privacy you can check. you fill in a coin, your browser makes the creator key, the halo treasury pays the creation cost and a fresh wallet signs the launch. you never connect, sign or pay.'],
-    ['is it really free?', 'yes. creating a pump.fun coin costs a little SOL in account rent and network fees, and the halo treasury pays it. there is no dev buy, so nobody holds the coin at launch.'],
-    ['why a daily limit?', 'every launch costs the treasury real SOL, so there are a set number of free launches per day (reset 00:00 UTC) and a few per visitor. instead of an account you do a few seconds of proof of work in your browser, which keeps bots out without asking who you are.'],
-    ['who gets the creator fees?', 'the creator key from the wizard, and only it. pump.fun pays creator fees to that address on every trade and halo takes no cut. claim them in claim.exe: you sign with the key, the treasury pays the gas.'],
-    ['can halo take my fees or my coin?', 'no. halo never sees the creator key, never buys the coin, and the launch wallet ends with zero SOL. halo holds its own treasury key, which only pays launch costs and claim fees.'],
-    ['what if i lose the creator key?', 'the fees stay where they are, unclaimable. nobody can recover the key, including us.'],
-    ['what can people still see?', 'everything on solana is public: the coin, trades, the creator address, the launch wallet and that the halo treasury funded it. what they cannot see is a link to you, unless you make one, for example by sending the fees to a wallet you use in public.'],
-    ['does halo keep logs?', 'halo stores each launch (coin details and addresses, all public anyway) and, for the daily limit only, a salted hash of your IP that is useless the next day and then deleted. no accounts, no cookies, no analytics. the host still sees requests the way every host does.'],
-    ['is this financial advice?', 'no. memecoins are extremely risky and most go to zero. halo is a tool, not affiliated with pump.fun.'],
+  const S = [
+    ['how a launch works', [
+      '1. fill in the coin: a name, a ticker, a line about it and links if you want. nothing about you. "launched on halo" is added to the end of the description.',
+      '2. add an image or draw one in paint.exe. your browser redraws it first, so hidden data like the camera, time and location never leaves your device.',
+      '3. your browser makes a brand-new creator key. it becomes the coin\'s creator and earns every creator fee. save the key file. it is the only way to claim.',
+      '4. a few seconds of proof of work run on your device. that replaces an account and keeps bots out.',
+      '5. the halo treasury funds a fresh launcher wallet inside the launch transaction. that wallet signs the pump.fun create and ends with nothing in it.',
+      '6. the coin is live. there is no dev buy, so nobody holds it at launch. it shows up in coins.db, read live from the chain.',
+    ]],
+    ['the six layers', [
+      '01 site      no analytics, no cookies, no third-party scripts or fonts. the page only talks to its own server.',
+      '02 connect   no wallet connect, no approval and no signature for a free launch. there is nothing for a drainer to hijack.',
+      '03 key       the creator key is born in your browser. halo never sees it.',
+      '04 launcher  a new wallet signs every launch. the dev wallet on the chart is never yours.',
+      '05 gas       the creator key never needs SOL. you sign a claim and the treasury pays the network fee.',
+      '06 files     images are redrawn before upload. only the pixels leave your device.',
+    ]],
+    ['claiming creator fees', [
+      '1. open claim.exe and drop in your key file. you can also paste the secret, or connect the wallet you launched with.',
+      '2. the key stays in that window, in memory, and is gone when you close the tab. it is never uploaded.',
+      '3. press claim. you sign in your browser and the treasury pays the gas.',
+      '4. send the SOL anywhere. sending it to a wallet you use in public links the coin to you, so that part is up to you.',
+    ]],
+    ['or launch with your own wallet', 'pick "connect wallet" in the creator step. your wallet signs and pays the launch (a little SOL) and can add a dev buy in the same transaction. it becomes the creator and shows as the dev on the chart, so the coin is linked to that wallet. the coin\'s own key is still made in your browser. there is no daily limit for wallet launches. phantom, solflare, backpack and other wallets that support the wallet standard work. on a phone, open the site inside your wallet\'s browser.'],
+    ['what stays public', 'everything on solana is public: the coin, its trades, the creator address, the launch wallet and the fact that the halo treasury funded it. what is not public is any link from those to you, unless you make one.'],
+    ['keep your key safe', 'the creator key controls the fees. never share the secret. halo will never ask for it: claim.exe signs in your browser and only sends signatures. if you lose the key, the fees stay unclaimable. nobody can recover it, including us.'],
+    ['commands', 'in the room, type on the screen: launch, coins, claim, layers or docs to go straight there, or press enter to just go in. lamp and storm do what you think. on the desktop, cmd.exe takes launch, coins, claim, status, privacy, paint, sweeper, color, scr, readme, whoami, ver, cls and exit. type help in either.'],
   ];
-  $('#readmeBody').innerHTML = `<h5>README.TXT  ·  halo</h5><p>launch with layers of privacy. every one of them real.\n</p>` + Q.map(([q, a]) => `<h5>> ${esc(q)}</h5><p>${esc(a)}</p>`).join('');
+  const Q = [
+    ['is it really free?', 'yes. creating a pump.fun coin costs a little SOL in account rent and network fees, and the halo treasury pays it. you pay nothing and sign nothing.'],
+    ['why is there a daily limit?', 'every free launch costs the treasury real SOL, so there is a set number per day (reset at 00:00 UTC) and a few per visitor. the proof of work keeps bots out without asking who you are.'],
+    ['who gets the creator fees?', 'the creator key, and only it. pump.fun pays creator fees to that address on every trade and halo takes no cut.'],
+    ['can halo take my fees or my coin?', 'no. halo never sees the creator key, never buys the coin, and the launch wallet ends empty. halo only holds its own treasury key, which pays launch costs and claim fees.'],
+    ['can i edit or delete a coin?', 'no. a coin on pump.fun cannot be edited or deleted after launch, so check the review step.'],
+    ['does halo keep logs?', 'halo stores each launch (the coin details and addresses, which are public anyway). for the daily limit only, it also keeps a salted hash of your IP, which is useless the next day and then deleted. there are no accounts, no cookies and no analytics. the host still sees requests, as every host does.'],
+    ['is this financial advice?', 'no. memecoins are extremely risky and most go to zero. halo is a tool and is not affiliated with pump.fun.'],
+  ];
+  const body = v => esc(Array.isArray(v) ? v.join('\n') : v);
+  $('#readmeBody').innerHTML = `<h5>README.TXT  ·  halo</h5><p>launch with layers of privacy. every one of them real.\nno connect. no signature. no SOL. the coin will never know your name.</p>`
+    + S.map(([h, v]) => `<h5>[ ${esc(h)} ]</h5><p>${body(v)}</p>`).join('')
+    + `<h5>[ questions ]</h5>` + Q.map(([q, a]) => `<h5>> ${esc(q)}</h5><p>${esc(a)}</p>`).join('');
 }
 // ================================================================ cmd.exe
 function cmd() {

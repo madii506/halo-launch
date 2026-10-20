@@ -225,14 +225,15 @@ function build(scene, mobile) {
 // ---------------------------------------------------------------- camera shots
 function shots(portrait) {
   const L = portrait ? [
-    [V(1.0, 1.24, .95), V(1.18, 1.27, -.65)], [V(.96, 1.2, .8), V(1.16, 1.24, -.65)], [V(1.25, 1.06, 3.0), V(.42, .72, -.3)],
+    [V(.3, 1.2, 5.3), V(.4, .8, -.45)], [V(.72, 1.14, 4.2), V(.78, .9, -.6)], [V(1.15, 1.05, 3.15), V(.42, .72, -.3)],
     [V(-.82, 1.0, 3.3), V(-.02, .5, -.02)], [V(0, .9, 3.35), V(0, .44, .02)]]
     : [
-    [V(1.02, 1.24, .64), V(1.18, 1.27, -.65)], [V(.98, 1.2, .5), V(1.16, 1.24, -.65)], [V(1.18, 1.04, 2.1), V(.55, .7, -.3)],
-    [V(-.78, .92, 2.55), V(-.06, .5, -.05)], [V(.04, .84, 2.5), V(0, .5, .02)]];
+    [V(.36, 1.16, 3.95), V(.42, .8, -.45)], [V(.8, 1.12, 3.05), V(.84, .92, -.6)], [V(1.1, 1.03, 2.2), V(.52, .7, -.3)],
+    [V(-.74, .93, 2.55), V(-.06, .5, -.05)], [V(.04, .84, 2.5), V(0, .5, .02)]];
   return { pos: new THREE.CatmullRomCurve3(L.map(a => a[0]), false, 'centripetal'), look: new THREE.CatmullRomCurve3(L.map(a => a[1]), false, 'centripetal'), end: L[L.length - 1] };
 }
-const SHOT_T = 13.4;   // seconds from the window to the ready shot
+const SHOT_T = 13.4;   // seconds from the wide, dark room to the ready shot
+const FOV = p => p ? [54, 46] : [40, 31];   // the lens starts wide and tightens as the camera pushes in
 
 // ---------------------------------------------------------------- run
 // Everything is timed against one clock and replayed from a queue, so a slow frame never stretches the film,
@@ -257,7 +258,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   let S = shots(portrait());
   function resize() {
     const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); composer.setSize(w, h);
-    bloom.resolution.set(w / 3, h / 3); cam.aspect = w / h; cam.fov = portrait() ? 46 : 31; cam.updateProjectionMatrix(); S = shots(portrait());
+    bloom.resolution.set(w / 3, h / 3); cam.aspect = w / h; cam.fov = FOV(portrait())[1]; cam.updateProjectionMatrix(); S = shots(portrait());
   }
   resize(); addEventListener('resize', resize);
 
@@ -271,7 +272,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   const say = runs => term.push(Array.isArray(runs[0]) ? runs : [[runs[0], runs[1]]]);
   const hdd = on => { P.hddMat.color.setHex(on ? 0xffb648 : 0x2a1c08); if (on && NOW - st.hddT > 260) { st.hddT = NOW; sfx('hdd'); } };
   const lightning = (strength = 1) => { st.bolt.push([NOW, strength], [NOW + 140, strength * .6]); sfx('thunder', strength); };
-  const caption = text => { st.cap = text ? { text, ms: NOW } : null; st.capShown = -1; cap.textContent = ''; cap.classList.toggle('on', !!text); };
+  const caption = text => { st.cap = null; if (cap) { cap.textContent = ''; cap.classList.remove('on'); } };
 
   // ---- the queue
   const Q = []; let qi = 0;
@@ -279,8 +280,8 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   function flush() { const t = NOW - st.t0; while (qi < Q.length && (st.skip || Q[qi].ms <= t)) { const e = Q[qi++]; if (!(st.skip && e.soft)) e.fn(); } }
 
   // the film: the window, the lamp, the power button
-  ev(0, () => caption('23:58 · somewhere on the other side of the web'), true);
   ev(2300, () => lightning(1), true);
+  ev(4250, () => lightning(.5), true);
   ev(5600, () => { st.lampT = NOW; sfx('click'); });
   ev(6800, () => { sfx('power'); st.crtOn = true; P.ledMat.color.setHex(0x3dff8a); P.monLed.color.setHex(0xffb648); term.off = false; term.power = 0; term.dirty = true; });
   for (let i = 1; i <= 20; i++) ev(6800 + i * 23, () => { term.power = i / 20; term.dirty = true; });
@@ -335,7 +336,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   // skip: the rest of the boot plays at once and the camera glides to the ready shot
   function skip() {
     if (st.skip || st.phase !== 'film') return;
-    st.skip = true; st.blend = { t: NOW, from: cam.position.clone(), look: (st.look || S.end[1]).clone() };
+    st.skip = true; st.blend = { t: NOW, from: cam.position.clone(), look: (st.look || S.end[1]).clone(), fov: cam.fov };
     if (st.lampT < 0) st.lampT = NOW - 1000;
     caption('');
   }
@@ -414,9 +415,11 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     const t = (NOW - st.t0) / 1000;
     flush();
     // captions type themselves in the letterbox
-    if (st.cap) { const n = Math.min(st.cap.text.length, Math.floor((NOW - st.cap.ms) / 34)); if (n !== st.capShown) { st.capShown = n; cap.textContent = st.cap.text.slice(0, n); } }
     // camera: the film path (or a glide to its end when skipped), a slow breath, and the mouse once it settles
     const u = clamp01(t / SHOT_T), k = sine(u);
+    const [f0, f1] = FOV(portrait()); let fov = st.phase === 'film' && !st.blend ? f0 + (f1 - f0) * k : f1;
+    if (st.blend && st.phase === 'film') fov = st.blend.fov + (f1 - st.blend.fov) * ease(clamp01((NOW - st.blend.t) / 900));
+    if (Math.abs(cam.fov - fov) > .001) { cam.fov = fov; cam.updateProjectionMatrix(); }
     let pos = S.pos.getPoint(k), look = S.look.getPoint(k);
     if (st.blend) { const b = ease(clamp01((NOW - st.blend.t) / 900)); pos = st.blend.from.clone().lerp(S.end[0], b); look = st.blend.look.clone().lerp(S.end[1], b); }
     if (st.phase === 'film' && st.posted && (u >= 1 || (st.blend && NOW - st.blend.t > 900))) ready();
@@ -449,6 +452,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     // the rest of the room keeps breathing
     P.rainT.offset.y = (P.rainT.offset.y + dt * .12) % 1; P.rainT2.offset.y = (P.rainT2.offset.y + dt * .045) % 1;
     if (st.crtOn) P.ledMat.color.setHex(Math.sin(t * 9) > .3 ? 0x3dff8a : 0x0f4a26);
+    else P.monLed.color.setRGB(.16 + .5 * Math.max(0, Math.sin(t * 2.4)) ** 3, .1 + .26 * Math.max(0, Math.sin(t * 2.4)) ** 3, .03);   // standby, breathing amber
     const screenLight = term.off ? 0 : term.power < 1 ? term.power * .5 : .2 + (term.mode === 'tunnel' ? term.tunnel * 2.5 : 0);
     P.glow.intensity += (screenLight + Math.sin(t * 13) * .015 - P.glow.intensity) * .2;
     P.dust.rotation.y += dt * .03; P.dust.position.y = Math.sin(t * .2) * .02;
