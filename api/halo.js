@@ -1,5 +1,5 @@
 // HALO API. One function, many ops: status, pow, launch, launches, coins, meta, img, claim, claimbuild,
-// claimsend, withdrawbuild, withdrawsend, dryrun, tick.
+// claimsend, withdrawbuild, withdrawsend, walletbuild, walletsend, wclaimbuild, wclaimsend, dryrun, tick.
 const crypto = require('crypto');
 const L = require('./_lib');
 const C = require('./_chain');
@@ -88,6 +88,50 @@ function parseImage(dataUrl) {
   const ok = (m[2] === 'png' && sig.startsWith('89504e47')) || (m[2] === 'jpeg' && sig.startsWith('ffd8ff')) || (m[2] === 'webp' && sig.startsWith('52494646') && buf.subarray(8, 12).toString() === 'WEBP') || (m[2] === 'gif' && sig.startsWith('474946'));
   return ok ? { type: m[1], b64: m[3], bytes: buf.length } : null;
 }
+function coinInput(b) {
+  const name = String(b.name || '').replace(/\s+/g, ' ').trim(), symbol = String(b.symbol || '').trim().replace(/^\$/, '');
+  if (!name || utf8len(name) > 32) throw L.err(400, 'The name needs 1 to 32 bytes.');
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,9}$/.test(symbol)) throw L.err(400, 'The ticker needs 1 to 10 letters or numbers.');
+  const desc = String(b.description || '').replace(/\r/g, '').trim();
+  if (desc.length > 600) throw L.err(400, 'Keep the description under 600 characters.');
+  const x = cleanUrl(b.x, ['x.com', 'twitter.com']), tg = cleanUrl(b.tg, ['t.me', 'telegram.me']), web = cleanUrl(b.web);
+  if (x === false) throw L.err(400, 'The X link should be an x.com link.');
+  if (tg === false) throw L.err(400, 'The Telegram link should be a t.me link.');
+  if (web === false) throw L.err(400, 'The website link does not look right.');
+  const img = parseImage(b.image); if (!img) throw L.err(400, 'Add a PNG, JPG, WebP or GIF under 1.5 MB.');
+  return { name, symbol, desc, x, tg, web, img };
+}
+// A launch the user's own wallet pays for and signs: no treasury, no daily cap, an optional dev buy.
+async function walletBuild(req, b) {
+  await L.schema();
+  if (CFG.paused) throw L.err(503, 'Launches are paused for a moment.');
+  const { name, symbol, desc, x, tg, web, img } = coinInput(b);
+  const creator = String(b.creator || '').trim(), mint = String(b.mint || '').trim();
+  if (!C.isAddr(creator)) throw L.err(400, 'Connect a wallet first.');
+  if (!C.isAddr(mint) || mint === creator) throw L.err(400, 'The coin key is not valid. Try again.');
+  const buy = Math.round(Math.max(0, Math.min(10, Number(b.buySol) || 0)) * 1e9);
+  if ((await L.q(`SELECT 1 FROM halo_launches WHERE mint = $1 LIMIT 1`, [mint]))[0]) throw L.err(400, 'That coin key was already used. Try again.');
+  const id = newId(), o = origin(req), ipk = await ipKey(req);
+  const description = (desc ? desc + '\n\n' : '') + `launched on halo · ${o.replace(/^https?:\/\//, '')}`;
+  const rec = { id, name, symbol, description, creator, uri: `${o}/m/${id}`, mint };
+  await L.q(`INSERT INTO halo_launches (id, day, name, symbol, description, x, tg, web, img, img_type, uri, creator, mint, launcher, status, ipk, kind)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'preparing', $15, 'wallet')`,
+    [id, today(), name, symbol, description, x, tg, web, img.b64, img.type, rec.uri, creator, mint, creator, ipk]);
+  try { const t = await C.buildWalletLaunch(rec, buy); return { ok: true, id, mint, tx: t.tx, buySol: sol(buy) }; }
+  catch (e) { await L.q(`DELETE FROM halo_launches WHERE id = $1`, [id]); throw e; }
+}
+async function walletSend(b) {
+  await L.schema();
+  const r = await L.q(`SELECT * FROM halo_launches WHERE id = $1 AND kind = 'wallet'`, [String(b.id || '')]);
+  const row = r[0]; if (!row || row.status !== 'preparing') throw L.err(404, 'That launch expired. Start it again.');
+  const s = await C.sendWalletLaunch(row, b.tx);
+  await L.q(`UPDATE halo_launches SET status = 'sending', sig = $2, tx = $3, sent_at = now(), tries = 1, updated_at = now() WHERE id = $1`, [row.id, s.sig, s.raw]);
+  let st = null;
+  for (let i = 0; i < 6 && !st; i++) { await new Promise(res => setTimeout(res, C.MOCK ? 300 : 1800)); try { st = await C.statusOf(s.sig); } catch {} }
+  if (st && !st.err) await L.q(`UPDATE halo_launches SET status = 'launched', updated_at = now() WHERE id = $1`, [row.id]);
+  if (st && st.err) await L.q(`UPDATE halo_launches SET status = 'failed', err = $2, updated_at = now() WHERE id = $1`, [row.id, st.err.slice(0, 300)]);
+  return { ok: true, id: row.id, mint: row.mint, sig: s.sig, status: st ? (st.err ? 'failed' : 'launched') : 'sending' };
+}
 async function launch(req, b) {
   await L.schema();
   if (CFG.paused) throw L.err(503, 'Launches are paused for a moment.');
@@ -148,6 +192,10 @@ async function follow(row) {
     return { ...row, status: s, err: st.err };
   }
   const age = Date.now() - new Date(row.sent_at).getTime();
+  if (row.kind === 'wallet') {                              // the user's wallet signed it; we can only resend the same bytes
+    if (age < 90000) { try { await C.broadcast(row.tx); } catch {} return row; }
+    await L.q(`UPDATE halo_launches SET status = 'failed', err = 'did not land', updated_at = now() WHERE id = $1 AND status = 'sending'`, [row.id]); return { ...row, status: 'failed' };
+  }
   if (age < 75000) { try { await C.broadcast(row.tx); } catch {} return row; }
   if (row.tries >= 3) { await L.q(`UPDATE halo_launches SET status = 'failed', err = 'did not land', updated_at = now() WHERE id = $1 AND status = 'sending'`, [row.id]); return { ...row, status: 'failed' }; }
   const rec = { id: row.id, name: row.name, symbol: row.symbol, description: row.description, creator: row.creator, uri: row.uri, mint: row.mint };
@@ -188,6 +236,28 @@ module.exports = async (req, res) => {
     if (op === 'launch' && req.method === 'POST') {
       if (L.limited('launch:' + L.ip(req), 6, 600000)) throw L.err(429, 'Too many tries. Wait a few minutes.');
       return L.send(res, 200, await launch(req, await L.body(req)));
+    }
+    if (op === 'walletbuild' && req.method === 'POST') {
+      if (L.limited('wb:' + L.ip(req), 12, 600000)) throw L.err(429, 'Too many tries. Wait a few minutes.');
+      return L.send(res, 200, await walletBuild(req, await L.body(req)));
+    }
+    if (op === 'walletsend' && req.method === 'POST') {
+      if (L.limited('ws:' + L.ip(req), 12, 600000)) throw L.err(429, 'Too many tries. Wait a few minutes.');
+      return L.send(res, 200, await walletSend(await L.body(req)));
+    }
+    if (op === 'wclaimbuild' && req.method === 'POST') {
+      const b = await L.body(req); const creator = String(b.creator || '');
+      if (!C.isAddr(creator)) throw L.err(400, 'That is not a Solana address.');
+      if (L.limited('wcb:' + L.ip(req), 10, 600000)) throw L.err(429, 'Too many claims. Wait a few minutes.');
+      const c = await C.claimable(creator);
+      if (c.vault < CFG.minClaim) throw L.err(400, `There is under ${sol(CFG.minClaim)} SOL to claim, which is not worth the fee yet.`);
+      return L.send(res, 200, { ok: true, ...(await C.buildWalletClaim(creator)), vaultSol: sol(c.vault) });
+    }
+    if (op === 'wclaimsend' && req.method === 'POST') {
+      const b = await L.body(req); const creator = String(b.creator || '');
+      if (!C.isAddr(creator)) throw L.err(400, 'That is not a Solana address.');
+      if (L.limited('wcs:' + L.ip(req), 10, 600000)) throw L.err(429, 'Too many claims. Wait a few minutes.');
+      return L.send(res, 200, { ok: true, sig: await C.relayWalletClaim(creator, b.tx) });
     }
     if (op === 'launches') {
       await L.schema(); const id = String(qs.id || '');
@@ -254,6 +324,7 @@ module.exports = async (req, res) => {
       const rows = await L.q(`SELECT * FROM halo_launches WHERE status = 'sending' ORDER BY sent_at LIMIT 10`);
       for (const r of rows) await follow(r);
       await L.q(`DELETE FROM halo_pow WHERE at < now() - interval '1 day'`);
+      await L.q(`DELETE FROM halo_launches WHERE status = 'preparing' AND kind = 'wallet' AND created_at < now() - interval '1 hour'`);
       await L.q(`UPDATE halo_launches SET ipk = NULL WHERE ipk IS NOT NULL AND day < $1`, [today()]);
       return L.send(res, 200, { ok: true, followed: rows.length });
     }

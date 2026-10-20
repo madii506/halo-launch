@@ -186,6 +186,89 @@ async function finish(label, messageB64, signer, sigB58, cosign) {
   return b58enc(tx.signatures[0]);
 }
 
+// ---------- launches paid and signed by the user's own wallet ----------
+// We build the transaction (create, plus an optional dev buy) with the wallet as payer and creator. The browser
+// made the mint key; the wallet signs first, the mint key signs last, and we only send what checks out.
+async function buildWalletLaunch(rec, buyLamports) {
+  const { PublicKey, ComputeBudgetProgram } = w3(); const S = pump();
+  const user = new PublicKey(rec.creator), mint = new PublicKey(rec.mint);
+  let ixs, global = null;
+  if (buyLamports > 0 && !MOCK) {
+    const BN = require('bn.js'); const { NATIVE_MINT } = require('@solana/spl-token');
+    const [g, feeConfig] = await Promise.all([rpc(c => new S.OnlinePumpSdk(c).fetchGlobal()), rpc(c => new S.OnlinePumpSdk(c).fetchFeeConfig())]); global = g;
+    const solAmount = new BN(String(buyLamports));
+    const amount = S.getBuyTokenAmountFromSolAmount({ global, feeConfig, mintSupply: null, bondingCurve: null, amount: solAmount, quoteMint: NATIVE_MINT });
+    ixs = await S.PUMP_SDK.createV2AndBuyInstructions({ global, mint, name: rec.name, symbol: rec.symbol, uri: rec.uri, creator: user, user, amount, solAmount, mayhemMode: false });
+  } else {
+    ixs = [await S.PUMP_SDK.createV2Instruction({ mint, name: rec.name, symbol: rec.symbol, uri: rec.uri, creator: user, user, mayhemMode: false })];
+  }
+  const price = await priorityFee();
+  const blockhash = MOCK ? b58enc(crypto.randomBytes(32)) : (await rpc(c => c.getLatestBlockhash('confirmed'))).blockhash;
+  let cu = 400000;
+  if (!MOCK) {
+    const probe = compile(user, [ComputeBudgetProgram.setComputeUnitLimit({ units: 800000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: price }), ...ixs], blockhash);
+    const sim = await rpc(c => c.simulateTransaction(probe, { sigVerify: false, replaceRecentBlockhash: true, commitment: 'processed' }));
+    const v = sim.value;
+    if (v.err) {
+      const txt = JSON.stringify(v.err) + ' ' + (v.logs || []).join(' ');
+      if (/AccountNotFound|insufficient lamports|InsufficientFunds|0x1\b/i.test(txt)) throw L.err(402, `Your wallet needs about ${(0.025 + buyLamports / 1e9).toFixed(3)} SOL for this launch.`);
+      throw L.err(400, 'pump.fun would reject this launch right now.', { detail: JSON.stringify(v.err), logs: (v.logs || []).slice(-6) });
+    }
+    cu = Math.min(1000000, Math.ceil((v.unitsConsumed || 300000) * 1.2) + 10000);
+  }
+  const tx = compile(user, [ComputeBudgetProgram.setComputeUnitLimit({ units: cu }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: price }), ...ixs], blockhash);
+  const keysList = tx.message.staticAccountKeys.map(k => k.toBase58()), n = tx.message.header.numRequiredSignatures;
+  if (keysList[0] !== rec.creator || keysList.indexOf(rec.mint) < 0 || keysList.indexOf(rec.mint) >= n) throw L.err(500, 'Unexpected launch layout.');
+  return { tx: Buffer.from(tx.serialize()).toString('base64'), cu, price };
+}
+async function sendWalletLaunch(row, rawB64) {
+  const { VersionedTransaction } = w3();
+  const raw = Buffer.from(String(rawB64 || ''), 'base64');
+  let tx; try { tx = VersionedTransaction.deserialize(raw); } catch { throw L.err(400, 'That transaction could not be read.'); }
+  const msg = tx.message, keysList = msg.staticAccountKeys.map(k => k.toBase58()), n = msg.header.numRequiredSignatures;
+  if (keysList[0] !== row.creator) throw L.err(400, 'The paying wallet is not the creator you chose.');
+  const mi = keysList.indexOf(row.mint); if (mi < 0 || mi >= n) throw L.err(400, 'That is not the coin you set up.');
+  if (!keysList.includes(pump().PUMP_PROGRAM_ID.toBase58())) throw L.err(400, 'That is not a pump.fun launch.');
+  const mbytes = Buffer.from(msg.serialize());
+  for (let i = 0; i < n; i++) if (!edVerify(b58dec(keysList[i]), mbytes, tx.signatures[i])) throw L.err(400, i === 0 ? 'Your wallet did not sign the launch.' : 'The coin key did not sign the launch.');
+  const sig = b58enc(tx.signatures[0]);
+  if (MOCK) { M.sigs.set(sig, { at: Date.now() }); return { sig, raw: raw.toString('base64') }; }
+  await rpc(c => c.sendRawTransaction(raw, { skipPreflight: false, preflightCommitment: 'processed', maxRetries: 3 }));
+  return { sig, raw: raw.toString('base64') };
+}
+// A claim the creator's own wallet signs and pays for: nothing of ours in it.
+async function buildWalletClaim(creator) {
+  const { PublicKey, ComputeBudgetProgram } = w3(); const pk = new PublicKey(creator);
+  if (MOCK) {
+    const blockhash = b58enc(crypto.randomBytes(32)), { SystemProgram } = w3();
+    const tx = compile(pk, [ComputeBudgetProgram.setComputeUnitLimit({ units: 120000 }), SystemProgram.transfer({ fromPubkey: pk, toPubkey: pk, lamports: 0 })], blockhash);
+    return { tx: Buffer.from(tx.serialize()).toString('base64') };
+  }
+  const ixs = await rpc(c => new (pump().OnlinePumpSdk)(c).collectCoinCreatorFeeInstructions(pk, pk));
+  if (!ixs.length) throw L.err(400, 'Nothing to claim yet.');
+  const { blockhash } = await rpc(c => c.getLatestBlockhash('confirmed'));
+  const tx = compile(pk, [ComputeBudgetProgram.setComputeUnitLimit({ units: 220000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: await priorityFee() }), ...ixs], blockhash);
+  const sim = await rpc(c => c.simulateTransaction(tx, { sigVerify: false, replaceRecentBlockhash: true, commitment: 'processed' }));
+  if (sim.value.err) throw L.err(400, 'This claim would fail right now.', { detail: JSON.stringify(sim.value.err), logs: (sim.value.logs || []).slice(-6) });
+  return { tx: Buffer.from(tx.serialize()).toString('base64') };
+}
+// Relay a wallet-signed claim: only pump and compute-budget programs, the creator pays, every signature valid.
+async function relayWalletClaim(creator, rawB64) {
+  const { VersionedTransaction } = w3();
+  const raw = Buffer.from(String(rawB64 || ''), 'base64');
+  let tx; try { tx = VersionedTransaction.deserialize(raw); } catch { throw L.err(400, 'That transaction could not be read.'); }
+  const msg = tx.message, keysList = msg.staticAccountKeys.map(k => k.toBase58()), n = msg.header.numRequiredSignatures;
+  if (keysList[0] !== creator) throw L.err(400, 'The paying wallet is not the creator.');
+  const S = pump(), ok = new Set([S.PUMP_PROGRAM_ID.toBase58(), S.PUMP_AMM_PROGRAM_ID.toBase58(), 'ComputeBudget111111111111111111111111111111', '11111111111111111111111111111111', 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL', 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb', S.PUMP_FEE_PROGRAM_ID.toBase58()]);
+  for (const ix of msg.compiledInstructions) if (!ok.has(keysList[ix.programIdIndex] || '')) { if (!MOCK) throw L.err(400, 'That is not a plain claim.'); }
+  const mbytes = Buffer.from(msg.serialize());
+  for (let i = 0; i < n; i++) if (!edVerify(b58dec(keysList[i]), mbytes, tx.signatures[i])) throw L.err(400, 'The wallet did not sign the claim.');
+  const sig = b58enc(tx.signatures[0]);
+  if (MOCK) { M.sigs.set(sig, { at: Date.now() }); M.bal.set(creator, (M.bal.get(creator) || 0) + (M.vault.has(creator) ? M.vault.get(creator) : 12_345_678)); M.vault.set(creator, 0); return sig; }
+  await rpc(c => c.sendRawTransaction(raw, { skipPreflight: false, preflightCommitment: 'processed', maxRetries: 3 }));
+  return sig;
+}
+
 // ---------- coin stats straight from the bonding curves ----------
 async function coinStats(mints) {
   if (!mints.length) return {};
@@ -218,4 +301,4 @@ async function solUsd() {
   }).catch(() => null);
 }
 
-module.exports = { MOCK, SIM_PAYER, b58enc, b58dec, isAddr, keys, treasury, balance, simulateLaunch, sendLaunch, broadcast, statusOf, claimable, buildClaim, buildWithdraw, finish, coinStats, solUsd, edVerify };
+module.exports = { MOCK, SIM_PAYER, b58enc, b58dec, isAddr, keys, treasury, balance, simulateLaunch, sendLaunch, broadcast, statusOf, claimable, buildClaim, buildWithdraw, finish, coinStats, solUsd, edVerify, buildWalletLaunch, sendWalletLaunch, buildWalletClaim, relayWalletClaim };

@@ -71,6 +71,7 @@ function schema() {
       name text NOT NULL, symbol text NOT NULL, description text NOT NULL DEFAULT '', x text, tg text, web text,
       img text, img_type text, uri text, creator text NOT NULL, mint text NOT NULL, launcher text NOT NULL,
       status text NOT NULL, sig text, err text, tx text, cost bigint, sent_at timestamptz, tries int NOT NULL DEFAULT 0, ipk text)`);
+    await q(`ALTER TABLE halo_launches ADD COLUMN IF NOT EXISTS kind text`);
     await q(`CREATE INDEX IF NOT EXISTS halo_launches_day ON halo_launches (day)`);
     await q(`CREATE INDEX IF NOT EXISTS halo_launches_creator ON halo_launches (creator)`);
     await q(`CREATE TABLE IF NOT EXISTS halo_pow (h text PRIMARY KEY, at timestamptz NOT NULL DEFAULT now())`);
