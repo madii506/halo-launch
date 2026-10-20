@@ -1,10 +1,16 @@
 // HALO 98: the room, the boot on the CRT, then a dark old-school desktop where every window works.
+import { install } from './apps98.js?v=1';
+import { createSound } from './sound98.js?v=1';
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MOBILE = matchMedia('(max-width: 760px)').matches || matchMedia('(hover: none)').matches;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const ss = { get(k) { try { return sessionStorage.getItem(k); } catch { return null; } }, set(k, v) { try { sessionStorage.setItem(k, v); } catch {} } };
 const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+// sound: browsers only allow it after a click or a key, so the first one anywhere starts the music
+const SOUND = createSound(ls);
+const unlockOnce = () => { SOUND.unlock(); removeEventListener('pointerdown', unlockOnce, true); removeEventListener('keydown', unlockOnce, true); };
+addEventListener('pointerdown', unlockOnce, true); addEventListener('keydown', unlockOnce, true);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const short = a => a ? a.slice(0, 4) + '…' + a.slice(-4) : '';
 const ago = t => { const s = Math.max(1, (Date.now() - new Date(t).getTime()) / 1000); return s < 60 ? `${s | 0}s` : s < 3600 ? `${s / 60 | 0}m` : s < 86400 ? `${s / 3600 | 0}h` : `${s / 86400 | 0}d`; };
@@ -37,9 +43,12 @@ async function boot() {
   try {
     const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
     if (!gl) throw new Error('no webgl');
-    const { run } = await import('./intro3d.js?v=3');
+    const { run } = await import('./intro3d.js?v=5');
     const statusP = fetch('/api/status').then(r => r.json()).catch(() => null);
-    window.__halo = await run({ canvas, mobile: MOBILE, onEnter: go, status: statusP, onReady: () => { $('#ihint').classList.add('on'); $('#itouch').classList.add('on'); } });
+    const sb = $('#isound');
+    if (sb) { SOUND.onChange(st => { const on = st.on && !st.muted; sb.textContent = on ? '♪ sound on' : '♪ sound off'; sb.setAttribute('aria-pressed', String(on)); });
+      sb.onclick = e => { e.stopPropagation(); if (!SOUND.on) { SOUND.unlock(); if (SOUND.muted) SOUND.setMuted(false); } else SOUND.setMuted(!SOUND.muted); }; }
+    window.__halo = await run({ canvas, mobile: MOBILE, onEnter: go, status: statusP, audio: SOUND, onReady: () => { $('#ihint').classList.add('on'); $('#itouch').classList.add('on'); } });
     started = true;
     requestAnimationFrame(() => { canvas.classList.add('on'); const l = $('#iload'); if (l) l.remove(); });
   } catch (e) { const l = $('#iload'); if (l) l.remove(); if (!started) fallbackBoot(go); }
@@ -57,13 +66,16 @@ async function fallbackBoot(go) {
 }
 
 async function desktop(cmd, instant) {
-  const intro = $('#intro');
-  if (!instant) {
-    const sp = $('#splash'); sp.hidden = false; intro.remove();
-    await sleep(1150); sp.remove();
-  } else { intro.remove(); $('#splash').remove(); }
+  const intro = $('#intro'), sp = $('#splash');
+  if (!instant) {                                          // the splash fades in over the flash, then dissolves into the desktop
+    sp.hidden = false; sp.classList.add('in');
+    await sleep(520); intro.remove();
+    await sleep(820); sp.classList.add('out');
+    setTimeout(() => sp.remove(), 700);
+  } else { intro.remove(); sp.remove(); }
   document.body.classList.remove('booting');
   const d = $('#desk'); d.hidden = false; d.classList.add('in');
+  SOUND.scene('desk'); if (!instant) setTimeout(() => SOUND.sfx('chime'), 250);
   initDesk();
   const app = { launch: 'launch', coins: 'coins', claim: 'claim', layers: 'privacy', docs: 'readme' }[cmd];
   if (app) WM.open(app);
@@ -88,6 +100,7 @@ const WM = {
       w.querySelector('[data-min]').onclick = e => { e.stopPropagation(); this.min(app); };
       w.querySelector('[data-max]').onclick = e => { e.stopPropagation(); this.max(app); };
       w.querySelectorAll('[data-close]').forEach(b => b.onclick = e => { e.stopPropagation(); this.close(app); });
+      if (!MOBILE) { const g = document.createElement('div'); g.className = 'grip'; g.setAttribute('aria-hidden', 'true'); w.appendChild(g); g.addEventListener('pointerdown', e => this.resize(e, w)); }
     });
   },
   place(w) {
@@ -98,16 +111,27 @@ const WM = {
     x = Math.min(x, area.width - ww - 8); y = Math.min(y, area.height - wh - 8);
     w.style.left = Math.max(4, x) + 'px'; w.style.top = Math.max(4, y) + 'px';
   },
-  open(app) {
+  rectOf(el) { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; },
+  zoom(f, t) {                                             // the old dotted outline that flies between a button and its window
+    if (RM || MOBILE || !f || !t || !f.w || !t.w) return;
+    $('#zoomr').animate([{ left: f.x + 'px', top: f.y + 'px', width: f.w + 'px', height: f.h + 'px', opacity: 1 }, { left: t.x + 'px', top: t.y + 'px', width: t.w + 'px', height: t.h + 'px', opacity: .85 }], { duration: 200, easing: 'cubic-bezier(.3,.7,.4,1)' });
+  },
+  open(app, arg, fromEl) {
     if (app === 'x') { if (STATUS && STATUS.x) window.open(STATUS.x, '_blank', 'noopener,noreferrer'); return; }
     const w = this.wins[app]; if (!w) return;
     closeMenus();
-    if (!w.classList.contains('open')) { w.classList.add('open'); if (!w.dataset.placed) { this.place(w); w.dataset.placed = '1'; } this.task(app, true); APPS[app] && APPS[app].open && APPS[app].open(); }
-    w.hidden = false; w.style.display = ''; w.classList.remove('minimized'); this.focus(app);
+    const was = w.classList.contains('open');
+    if (!was) { w.classList.add('open'); if (!w.dataset.placed) { this.place(w); w.dataset.placed = '1'; } this.task(app, true); }
+    w.classList.remove('minimized'); this.focus(app);
+    if (!was) { this.zoom(fromEl ? this.rectOf(fromEl) : null, this.rectOf(w)); SOUND.sfx('open'); }
+    if (APPS[app] && APPS[app].open && (!was || arg !== undefined)) APPS[app].open(arg);
   },
-  close(app) { const w = this.wins[app]; if (!w) return; w.classList.remove('open', 'active', 'max'); this.task(app, false); APPS[app] && APPS[app].close && APPS[app].close(); this.focusTop(); },
-  min(app) { const w = this.wins[app]; w.classList.remove('open', 'active'); w.classList.add('minimized'); this.syncTasks(); this.focusTop(); },
-  max(app) { if (MOBILE) return; this.wins[app].classList.toggle('max'); },
+  close(app) { const w = this.wins[app]; if (!w) return; if (w.classList.contains('open')) SOUND.sfx('close'); w.classList.remove('open', 'active', 'max', 'minimized'); this.task(app, false); APPS[app] && APPS[app].close && APPS[app].close(); this.focusTop(); },
+  min(app) { const w = this.wins[app], b = $(`#tasks [data-task="${app}"]`); if (b) this.zoom(this.rectOf(w), this.rectOf(b)); w.classList.remove('open', 'active'); w.classList.add('minimized'); this.syncTasks(); this.focusTop(); },
+  restore(app) { const w = this.wins[app], b = $(`#tasks [data-task="${app}"]`); w.classList.remove('minimized'); w.classList.add('open'); this.focus(app); if (b) this.zoom(this.rectOf(b), this.rectOf(w)); },
+  max(app) { if (MOBILE) return; const w = this.wins[app], f = this.rectOf(w); w.classList.toggle('max'); this.zoom(f, this.rectOf(w)); },
+  retitle(app, title) { const w = this.wins[app]; if (!w) return; w.dataset.title = title; const s = w.querySelector(':scope > .tb > span'); if (s) s.textContent = title; const b = $(`#tasks [data-task="${app}"] span`); if (b) b.textContent = title.split(' — ')[0]; },
+  isActive(app) { const w = this.wins[app]; return !!(w && w.classList.contains('open') && w.classList.contains('active')); },
   focus(app) {
     const w = this.wins[app]; if (!w || !w.classList.contains('open')) return;
     $$('.w.active').forEach(x => x !== w && x.classList.remove('active'));
@@ -119,7 +143,7 @@ const WM = {
     if (on && !b) {
       const w = this.wins[app]; b = document.createElement('button'); b.type = 'button'; b.dataset.task = app;
       b.innerHTML = `<img src="/assets/img/ico-${w.dataset.icon}-16.png" alt=""><span>${esc(w.dataset.title.split(' — ')[0])}</span>`;
-      b.onclick = () => { const w2 = this.wins[app]; if (w2.classList.contains('minimized')) { w2.classList.remove('minimized'); w2.classList.add('open'); this.focus(app); } else if (w2.classList.contains('active')) this.min(app); else this.focus(app); };
+      b.onclick = () => { const w2 = this.wins[app]; if (w2.classList.contains('minimized')) this.restore(app); else if (w2.classList.contains('active')) this.min(app); else this.focus(app); };
       t.appendChild(b);
     }
     if (!on && b) b.remove();
@@ -133,28 +157,92 @@ const WM = {
     const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
     addEventListener('pointermove', mv); addEventListener('pointerup', up);
   },
+  resize(e, w) {                                           // drag the corner grip
+    if (w.classList.contains('max')) return;
+    e.preventDefault(); e.stopPropagation();
+    const r = w.getBoundingClientRect(), area = $('#wins').getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY, cs = getComputedStyle(w);
+    const minW = parseInt(cs.minWidth) || 260, minH = parseInt(cs.minHeight) || 160;
+    const mv = ev => { w.style.width = Math.max(minW, Math.min(area.right - r.left - 2, r.width + ev.clientX - x0)) + 'px'; w.style.height = Math.max(minH, Math.min(area.bottom - r.top - 2, r.height + ev.clientY - y0)) + 'px'; };
+    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up);
+  },
 };
 function dialog(title, html, buttons = [['ok', true]], icon = 'warn') {
   return new Promise(res => {
     const d = $('#dlg'); $('#dlgT').textContent = title; $('#dlgB').innerHTML = html; $('#dlgI').src = `/assets/img/ico-${icon}.png`;
     const a = $('#dlgA'); a.innerHTML = '';
     buttons.forEach(([label, def], i) => { const b = document.createElement('button'); b.className = 'bt' + (def ? ' def' : ''); b.type = 'button'; b.textContent = label; b.onclick = () => { d.classList.remove('open'); d.hidden = true; res(i); }; a.appendChild(b); });
-    d.hidden = false; d.classList.add('open', 'active'); d.querySelector('[data-x]').onclick = () => { d.classList.remove('open'); d.hidden = true; res(-1); };
+    d.hidden = false; d.classList.add('open', 'active'); SOUND.sfx('ding'); d.querySelector('[data-x]').onclick = () => { d.classList.remove('open'); d.hidden = true; res(-1); };
     setTimeout(() => a.querySelector('.def') && a.querySelector('.def').focus(), 30);
   });
 }
 
 // ================================================================ desktop chrome: icons, selection, menus, tray
-function closeMenus() { $('#startmenu').hidden = true; $('#startBtn').setAttribute('aria-expanded', 'false'); $('#ctx').hidden = true; }
+let HOOKS = {};
+function closeMenus() {
+  $('#startmenu').hidden = true; $('#volPop').hidden = true; $$('.menu.subm').forEach(m => m.hidden = true); $$('#startmenu .sub').forEach(b => b.classList.remove('open'));
+  $('#startBtn').setAttribute('aria-expanded', 'false'); $('#ctx').hidden = true; HOOKS.closeClock && HOOKS.closeClock();
+}
+// the wallpaper: the ASCII PC only loads when it is wanted, and pauses under the screensaver
+const WALL = { want: 'pc', ctl: null, paused: false, loading: false };
+function setWall(v) {
+  WALL.want = v; $('#wall').classList.toggle('off', v !== 'pc');
+  if (WALL.ctl) WALL.ctl.show(v === 'pc');
+  else if (v === 'pc' && !RM && !WALL.loading && !$('#desk').hidden) { WALL.loading = true; import('./ascii3d.js?v=3').then(m => { WALL.ctl = m.mountAscii($('#wall')); WALL.ctl.show(WALL.want === 'pc'); WALL.ctl.pause(WALL.paused); }).catch(() => {}); }
+}
+function pauseWall(p) { WALL.paused = p; if (WALL.ctl) WALL.ctl.pause(p); }
+let pickImage = null;
+async function useImage(file) {
+  WM.open('launch');
+  if (pickImage) await pickImage(file);
+  if (W.step === 0 && !checkCoin()) go(1); else if (W.step === 3) review();
+  toast(W.step === 0 ? 'image set · fill in the coin, then next' : 'image set in launch.exe');
+}
+function openClaimWatch(addr) { WM.open('claim'); $('#kWatch').value = addr; setClaimKey(null, addr); }
+function iconDrag(icons) {                                 // icons can be dragged anywhere on a grid; arrange icons puts them back
+  const box = $('#icons'), CW = 104, CH = 96, KEY = 'halo:icons';
+  let pos = {}; try { pos = JSON.parse(ls.get(KEY) || '{}'); } catch {}
+  const dims = () => ({ cols: Math.max(1, Math.floor((innerWidth - 20) / CW)), rows: Math.max(1, Math.floor((innerHeight - 64) / CH)) });
+  function layout() {
+    if (!Object.keys(pos).length) { box.classList.remove('free'); icons.forEach(ic => { ic.style.left = ic.style.top = ''; }); return; }
+    box.classList.add('free'); const taken = new Set(), { cols, rows } = dims(), rest = [];
+    const put = (ic, c, r) => { taken.add(c + ':' + r); ic.style.left = c * CW + 'px'; ic.style.top = r * CH + 'px'; };
+    icons.forEach(ic => { if (ic.hidden) return; const p = pos[ic.dataset.open]; if (p && p[0] < cols && p[1] < rows && !taken.has(p[0] + ':' + p[1])) put(ic, p[0], p[1]); else rest.push(ic); });
+    let c = 0, r = 0; for (const ic of rest) { while (taken.has(c + ':' + r)) { if (++r >= rows) { r = 0; c++; } } put(ic, c, r); }
+  }
+  function freeze() { if (box.classList.contains('free')) return; const b = box.getBoundingClientRect(); icons.forEach(ic => { if (ic.hidden) return; const r = ic.getBoundingClientRect(); pos[ic.dataset.open] = [Math.round((r.left - b.left) / CW), Math.round((r.top - b.top) / CH)]; }); layout(); }
+  icons.forEach(ic => ic.addEventListener('dragstart', e => e.preventDefault()));
+  icons.forEach(ic => ic.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || e.pointerType !== 'mouse') return;
+    const x0 = e.clientX, y0 = e.clientY; let on = false, ox = 0, oy = 0;
+    const mv = ev => {
+      if (!on) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return; on = true; freeze(); const r = ic.getBoundingClientRect(); ox = x0 - r.left; oy = y0 - r.top; ic.classList.add('dragging'); }
+      const b = box.getBoundingClientRect(); ic.style.left = (ev.clientX - b.left - ox) + 'px'; ic.style.top = (ev.clientY - b.top - oy) + 'px';
+    };
+    const up = () => {
+      removeEventListener('pointermove', mv); removeEventListener('pointerup', up);
+      if (!on) return; ic.classList.remove('dragging'); ic.dataset.dragged = '1'; setTimeout(() => delete ic.dataset.dragged, 60);
+      const { cols, rows } = dims(); let c = Math.max(0, Math.min(cols - 1, Math.round(parseFloat(ic.style.left) / CW))), r = Math.max(0, Math.min(rows - 1, Math.round(parseFloat(ic.style.top) / CH)));
+      const other = Object.entries(pos).find(([k, p]) => k !== ic.dataset.open && p[0] === c && p[1] === r);
+      if (other) pos[other[0]] = pos[ic.dataset.open];             // swap places with whoever sat there
+      pos[ic.dataset.open] = [c, r]; ls.set(KEY, JSON.stringify(pos)); layout();
+    };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up);
+  }));
+  addEventListener('resize', layout);
+  layout();
+  return { reset() { pos = {}; ls.set(KEY, '{}'); layout(); } };
+}
 function initDesk() {
   WM.init();
   const icons = $$('.ic');
   icons.forEach(ic => {
-    ic.addEventListener('click', e => { icons.forEach(x => x.classList.toggle('sel', x === ic)); if (MOBILE) WM.open(ic.dataset.open); });
-    ic.addEventListener('dblclick', () => WM.open(ic.dataset.open));
-    ic.addEventListener('keydown', e => { if (e.key === 'Enter') WM.open(ic.dataset.open); });
+    ic.addEventListener('click', e => { if (ic.dataset.dragged) return; icons.forEach(x => x.classList.toggle('sel', x === ic)); if (MOBILE) WM.open(ic.dataset.open, undefined, ic); });
+    ic.addEventListener('dblclick', () => { if (!ic.dataset.dragged) WM.open(ic.dataset.open, undefined, ic); });
+    ic.addEventListener('keydown', e => { if (e.key === 'Enter') WM.open(ic.dataset.open, undefined, ic); });
   });
-  document.addEventListener('click', e => { const b = e.target.closest('[data-open]'); if (b && !b.classList.contains('ic')) WM.open(b.dataset.open); });
+  document.addEventListener('click', e => { const b = e.target.closest('[data-open]'); if (b && !b.classList.contains('ic')) WM.open(b.dataset.open, undefined, b.closest('.ql, .wbtns') ? b : null); });
+  const drag = MOBILE ? null : iconDrag(icons);
   // drag-select on the bare desktop
   const desk = $('#desk'), sel = $('#sel');
   desk.addEventListener('pointerdown', e => {
@@ -169,15 +257,34 @@ function initDesk() {
   });
   desk.addEventListener('contextmenu', e => {
     if (e.target.closest('.w, .taskbar')) return; e.preventDefault(); closeMenus();
-    const m = $('#ctx'); m.hidden = false; m.style.left = Math.min(e.clientX, innerWidth - 190) + 'px'; m.style.top = Math.min(e.clientY, innerHeight - 180) + 'px';
+    const m = $('#ctx'); m.hidden = false; m.style.left = Math.min(e.clientX, innerWidth - 190) + 'px'; m.style.top = Math.min(e.clientY, innerHeight - 220) + 'px';
   });
-  $$('#ctx [data-act]').forEach(b => b.onclick = () => { closeMenus(); if (b.dataset.act === 'refresh') { status(); coins(); toast('refreshed'); } if (b.dataset.act === 'arrange') { const g = $('#icons'); [...g.children].sort((a, c) => a.textContent.localeCompare(c.textContent)).forEach(n => g.appendChild(n)); } });
+  $$('[data-act]').forEach(b => b.addEventListener('click', () => {
+    closeMenus(); const a = b.dataset.act;
+    if (a === 'refresh') { status(); coins(); toast('refreshed'); }
+    if (a === 'arrange') { const g = $('#icons'); [...g.children].sort((x, y) => x.textContent.localeCompare(y.textContent)).forEach(n => g.appendChild(n)); drag && drag.reset(); }
+    if (a === 'saver') HOOKS.saver && HOOKS.saver.start();
+  }));
   $('#startBtn').onclick = e => { e.stopPropagation(); const m = $('#startmenu'); const open = m.hidden; closeMenus(); m.hidden = !open; $('#startBtn').setAttribute('aria-expanded', String(open)); };
-  document.addEventListener('pointerdown', e => { if (!e.target.closest('.menu, #startBtn')) closeMenus(); });
+  // start menu flyouts
+  const openSub = btn => {
+    $$('.menu.subm').forEach(m => m.hidden = m.id !== 'sub-' + btn.dataset.sub); $$('#startmenu .sub').forEach(b => b.classList.toggle('open', b === btn));
+    const m = $('#sub-' + btn.dataset.sub), r = btn.getBoundingClientRect(); m.hidden = false;
+    let x = r.right - 3; if (x + m.offsetWidth > innerWidth - 4) x = Math.max(4, innerWidth - m.offsetWidth - 4);
+    m.style.left = x + 'px'; m.style.top = Math.max(4, Math.min(innerHeight - m.offsetHeight - 52, r.top - 3)) + 'px';
+  };
+  $$('#startmenu .sub').forEach(b => { b.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') openSub(b); }); b.addEventListener('click', e => { e.stopPropagation(); openSub(b); }); });
+  $$('#startmenu .items > button:not(.sub)').forEach(b => b.addEventListener('pointerenter', () => { $$('.menu.subm').forEach(m => m.hidden = true); $$('#startmenu .sub').forEach(x => x.classList.remove('open')); }));
+  document.addEventListener('pointerdown', e => { if (!e.target.closest('.menu, #startBtn, #clock, #traySnd')) closeMenus(); });
   addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus(); });
   $('#shutBtn').onclick = async () => { closeMenus(); const i = await dialog('shut down halo', 'what do you want the computer to do?', [['shut down', true], ['restart', false], ['cancel', false]], 'pc');
     if (i === 0) { $('#shutdown').hidden = false; $('#shutdown').onclick = () => { try { sessionStorage.removeItem('halo:seen'); } catch {} location.reload(); }; }
     if (i === 1) { try { sessionStorage.removeItem('halo:seen'); } catch {} location.reload(); } };
+  const vp = $('#volPop'), vr = $('#volRange'), vm = $('#volMute'), ts = $('#traySnd');
+  SOUND.onChange(st => { vr.value = Math.round(st.vol * 100); vm.checked = st.muted; ts.textContent = st.muted || !st.on ? '♪̸' : '♪'; ts.classList.toggle('off', st.muted || !st.on); });
+  ts.onclick = e => { e.stopPropagation(); const open = vp.hidden; closeMenus(); vp.hidden = !open; SOUND.unlock(); };
+  vr.oninput = () => { SOUND.setVolume(vr.value / 100); if (SOUND.muted && vr.value > 0) SOUND.setMuted(false); };
+  vm.onchange = () => SOUND.setMuted(vm.checked);
   const tick = () => { const d = new Date(); $('#clock').textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
   tick(); setInterval(tick, 15000);
   $('#balloon').onclick = e => { if (!e.target.closest('.bx')) WM.open('coins'); $('#balloon').hidden = true; };
@@ -186,10 +293,11 @@ function initDesk() {
   wizard(); claimUi(); privacy(); readme(); cmd(); bin();
   $('#wizArt').textContent = WIZ_ART;
   $('#coinsRefresh').onclick = () => coins();
-  $('#sysCopy').onclick = () => STATUS && copy(STATUS.treasury);
+  HOOKS = install({ $, $$, esc, WM, dialog, toast, ls, MOBILE, copy, ago, usd, sfx: (n, a) => SOUND.sfx(n, a), getStatus: () => STATUS, getCoins: () => COINS, useImage, openClaimWatch, setWall, pauseWall, closeMenus });
+  Object.assign(APPS, { display: HOOKS.display, paint: HOOKS.paint, sweeper: HOOKS.sweeper, coin: HOOKS.coin, run: HOOKS.run });
   status(); coins(true);
   setInterval(status, 20000); setInterval(() => coins(false), 25000);
-  if (!RM) import('./ascii3d.js?v=2').then(m => m.mountAscii($('#wall'))).catch(() => {});
+  setWall(WALL.want);
 }
 
 // ================================================================ live data
@@ -201,12 +309,12 @@ async function status() {
   if (!s) { $('#trayDot').className = 'dot off'; $('#trayTxt').textContent = 'offline'; return; }
   const left = Math.max(0, Math.min(s.cap - s.today, s.launchesLeft == null ? s.cap : s.launchesLeft));
   $('#trayDot').className = 'dot ' + (s.ready ? 'live' : 'off');
-  $('#trayTxt').textContent = s.ready ? `${left} free launch${left === 1 ? '' : 'es'} left` : (s.why === 'cap' ? 'limit reached' : s.why === 'treasury' ? 'treasury refilling' : 'paused');
+  $('#trayTxt').textContent = s.ready ? 'launches open' : 'launches paused';
   $('#tray').title = `treasury ${s.treasurySol == null ? '—' : s.treasurySol} SOL`;
-  $('#freeLeft').textContent = s.ready ? `free launches left today: ${left}` : (WHY[s.why] || 'launches are paused.');
-  $('#welcomeStatus').innerHTML = `${s.ready ? '<span class="teal">● launches open</span>' : '<span class="gold">● launches paused</span>'}<br>${left} of ${s.cap} free launches left today<br>${s.launched} coin${s.launched === 1 ? '' : 's'} launched so far<br><span class="dim">each launch costs the treasury ≈ ${s.costSol.toFixed(3)} SOL. you pay 0.</span>`;
-  $('#sysLive').innerHTML = `network: <b>${esc(s.network)}</b><br>launches: <b>${s.ready ? 'open' : 'paused'}</b> · ${left} of ${s.cap} left today<br>coins launched: <b>${s.launched}</b><br>cost per launch: <b>≈ ${s.costSol.toFixed(3)} SOL</b> (treasury pays)` + (s.ca ? `<br>$HALO: <b class="gold">${esc(s.ca)}</b>` : '');
-  $('#sysTre').textContent = `treasury ${short(s.treasury)} · ${s.treasurySol == null ? '—' : s.treasurySol.toFixed(3)} SOL`;
+  $('#freeLeft').innerHTML = s.ready ? '<span class="teal">●</span> launches open' : `<span class="gold">●</span> ${esc(WHY[s.why] || 'launches are paused.')}`;
+  $('#welcomeState').innerHTML = s.ready ? '<span class="dot live"></span><span>launches open</span>' : '<span class="dot off"></span><span>launches paused for now</span>';
+  $('#sysLive').innerHTML = `network: <b>${esc(s.network)}</b><br>launches: <b>${s.ready ? 'open' : 'paused'}</b>` + (s.ca ? `<br>$HALO: <b class="gold">${esc(s.ca)}</b>` : '');
+  $('#sysTre').textContent = `${s.network} · ${s.ready ? 'launches open' : 'launches paused'}`;
   if (s.x) $('#icX').hidden = false;
   syncLaunch();
 }
@@ -216,7 +324,7 @@ async function coins(first) {
   const fresh = SEEN ? list.filter(c => !SEEN.has(c.id) && c.status === 'launched') : [];
   SEEN = new Set(list.map(c => c.id)); COINS = list;
   if (fresh.length && !first) balloon(`new coin · $${fresh[0].symbol}`, `${fresh[0].name} just launched on halo. click to see it.`);
-  $('#coinsMeta').textContent = `${list.length} object(s)`;
+  $('#coinsMeta').textContent = `${list.length} object(s)${list.length ? ' · double-click a coin for its properties' : ''}`;
   $('#coinsSol').textContent = j.solUsd ? `SOL $${j.solUsd}` : '';
   if (!list.length) { $('#coinsBody').innerHTML = `<div class="empty"><pre>  .--------.\n  | empty_ |\n  '--------'</pre>no coins yet. the first one launched on halo shows up here.<br><br><button class="bt def" type="button" data-open="launch">launch the first</button></div>`; return; }
   const bar = p => { if (p == null) return '<span class="dim">—</span>'; const n = Math.round(p * 10); return `<span class="prog">${'█'.repeat(n)}<i>${'░'.repeat(10 - n)}</i></span> <span class="dim">${Math.round(p * 100)}%</span>`; };
@@ -226,6 +334,9 @@ async function coins(first) {
     <td>${c.graduated ? '<span class="pill grad">graduated</span>' : bar(c.progress)}</td>
     <td><a class="lk" href="https://solscan.io/account/${esc(c.creator)}" target="_blank" rel="noopener noreferrer">${short(c.creator)}</a></td>
     <td><a class="lk" href="https://pump.fun/coin/${esc(c.mint)}" target="_blank" rel="noopener noreferrer">pump.fun ↗</a></td></tr>`).join('')}</tbody></table>`;
+  $$('#coinsBody tbody tr').forEach((tr, i) => { tr.dataset.i = i; tr.title = 'double-click for its properties';
+    tr.addEventListener('dblclick', e => { if (!e.target.closest('a')) WM.open('coin', list[i], tr); });
+    if (MOBILE) tr.addEventListener('click', e => { if (!e.target.closest('a')) WM.open('coin', list[i]); }); });
 }
 function balloon(t, b) { const el = $('#balloon'); $('#balT').textContent = t; $('#balB').textContent = b; el.hidden = false; clearTimeout(balloon.t); balloon.t = setTimeout(() => el.hidden = true, 7000); }
 
@@ -270,7 +381,7 @@ function review() {
   if (f.x) rows.push(['x', esc(f.x)]); if (f.tg) rows.push(['telegram', esc(f.tg)]); if (f.web) rows.push(['website', esc(f.web)]);
   rows.push(['creator', `<span class="teal">${esc(creator())}</span> <span class="dim">${W.own ? '(your own)' : '(made in this browser)'}</span>`]);
   rows.push(['launcher', '<span class="dim">a fresh wallet, made and funded at launch</span>']);
-  rows.push(['cost to you', `<b class="gold">0 SOL</b> <span class="dim">· treasury pays ≈ ${STATUS ? STATUS.costSol.toFixed(3) : '0.02'} SOL</span>`]);
+  rows.push(['cost to you', '<b class="gold">free</b>']);
   rows.push(['dev buy', '<span class="dim">none. nobody holds the coin at launch.</span>']);
   $('#rKv').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd${k === 'description' ? ' class="desc"' : ''}>${v}</dd>`).join('');
   syncLaunch();
@@ -314,6 +425,7 @@ function wizard() {
   const pick = async file => { $('#e1').textContent = ''; $('#imgInfo').textContent = 'cleaning…';
     try { const img = await cleanImage(file); W.image = img; $('#pv').innerHTML = `<img alt="" src="${img.dataUrl}">`; $('#imgInfo').innerHTML = `<span class="teal">clean</span> · ${img.w}×${img.h} · ${Math.round(img.bytes / 1024)} KB (was ${Math.round(img.origBytes / 1024)} KB with its metadata)`; }
     catch (e) { $('#e1').textContent = e.message; $('#imgInfo').textContent = ''; } };
+  pickImage = pick;
   $('#fImg').addEventListener('change', e => e.target.files[0] && pick(e.target.files[0]));
   const drop = $('#drop');
   ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
@@ -390,7 +502,7 @@ function privacy() {
 function readme() {
   const Q = [
     ['what is halo?', 'a pump.fun launchpad built around privacy you can check. you fill in a coin, your browser makes the creator key, the halo treasury pays the creation cost and a fresh wallet signs the launch. you never connect, sign or pay.'],
-    ['is it really free?', 'yes. creating a pump.fun coin costs about 0.02 SOL in account rent and network fees, and the treasury pays it. there is no dev buy, so nobody holds the coin at launch.'],
+    ['is it really free?', 'yes. creating a pump.fun coin costs a little SOL in account rent and network fees, and the halo treasury pays it. there is no dev buy, so nobody holds the coin at launch.'],
     ['why a daily limit?', 'every launch costs the treasury real SOL, so there are a set number of free launches per day (reset 00:00 UTC) and a few per visitor. instead of an account you do a few seconds of proof of work in your browser, which keeps bots out without asking who you are.'],
     ['who gets the creator fees?', 'the creator key from the wizard, and only it. pump.fun pays creator fees to that address on every trade and halo takes no cut. claim them in claim.exe: you sign with the key, the treasury pays the gas.'],
     ['can halo take my fees or my coin?', 'no. halo never sees the creator key, never buys the coin, and the launch wallet ends with zero SOL. halo holds its own treasury key, which only pays launch costs and claim fees.'],
@@ -408,22 +520,26 @@ function cmd() {
   print('halo 98 [version 4.10.1998]', 'm'); print('(c) nobody. all rights unclaimed.', 'm'); print('&nbsp;'); print('type <span class="g">help</span> for commands.');
   $('#cmdBody').addEventListener('click', () => inp.focus());
   const C = {
-    help: () => [['launch', 'open the launch wizard'], ['coins', 'list the newest coins'], ['claim', 'open claim.exe'], ['status', 'treasury and launches'], ['privacy', 'the six layers'], ['readme', 'open readme.txt'], ['whoami', 'who are you?'], ['ver', 'version'], ['date', 'today'], ['cls', 'clear the screen'], ['exit', 'close this window']].forEach(([a, b]) => print(`<span class="g">${a.padEnd(9, ' ')}</span><span class="m">${b}</span>`)),
-    status: () => { const s = STATUS; if (!s) return print('offline.', 'm'); print(`treasury   ${s.treasurySol == null ? '—' : s.treasurySol.toFixed(3)} SOL  <span class="m">${esc(s.treasury)}</span>`); print(`launches   ${s.ready ? '<span class="ok">open</span>' : '<span class="g">paused</span>'} · ${Math.max(0, s.cap - s.today)} of ${s.cap} left today`); print(`launched   ${s.launched} coin(s) · ≈${s.costSol.toFixed(3)} SOL each, paid by the treasury`); },
+    help: () => [['launch', 'open the launch wizard'], ['coins', 'list the newest coins'], ['claim', 'open claim.exe'], ['status', 'treasury and launches'], ['privacy', 'the six layers'], ['paint', 'draw a coin'], ['sweeper', 'tracker sweeper'], ['color', 'color amber|teal|rose|ice|mono'], ['scr', 'start the screensaver'], ['readme', 'open readme.txt'], ['whoami', 'who are you?'], ['ver', 'version'], ['cls', 'clear the screen'], ['exit', 'close this window']].forEach(([a, b]) => print(`<span class="g">${a.padEnd(9, ' ')}</span><span class="m">${b}</span>`)),
+    status: () => { const s = STATUS; if (!s) return print('offline.', 'm'); print(`network    ${esc(s.network)}`); print(`launches   ${s.ready ? '<span class="ok">open</span>' : '<span class="g">paused for now</span>'}`); },
     coins: () => { if (!COINS.length) return print('no coins yet. type <span class="g">launch</span> to make the first.', 'm'); COINS.slice(0, 8).forEach(c => print(`<span class="g">$${esc(c.symbol).padEnd(10, ' ')}</span>${esc(c.name).slice(0, 22).padEnd(23, ' ')}<span class="m">${ago(c.at).padEnd(5, ' ')}</span>${c.mcapUsd ? usd(c.mcapUsd) : ''}`)); },
     launch: () => { print('starting launch.exe …', 'm'); WM.open('launch'); }, claim: () => { print('starting claim.exe …', 'm'); WM.open('claim'); },
     privacy: () => WM.open('privacy'), layers: () => WM.open('privacy'), readme: () => WM.open('readme'), docs: () => WM.open('readme'),
     whoami: () => print('nobody', 'ok'), ver: () => print('halo 98 [version 4.10.1998]'), date: () => print(new Date().toString()), time: () => print(new Date().toLocaleTimeString()),
     cls: () => { out.innerHTML = ''; }, clear: () => { out.innerHTML = ''; }, exit: () => WM.close('cmd'),
-    dir: () => ['launch.exe', 'coins.db', 'claim.exe', 'privacy.cpl', 'readme.txt'].forEach(f => print(`10-20-98  12:00a    ${f}`)),
+    dir: () => ['launch.exe', 'coins.db', 'claim.exe', 'paint.exe', 'sweeper.exe', 'privacy.cpl', 'display.cpl', 'readme.txt'].forEach(f => print(`10-20-98  12:00a    ${f}`)),
     sudo: () => print('nice try. there is no root here, only nobody.', 'm'),
+    paint: () => WM.open('paint'), mspaint: () => WM.open('paint'), sweeper: () => WM.open('sweeper'), winmine: () => WM.open('sweeper'), display: () => WM.open('display'), run: () => WM.open('run'),
+    scr: () => HOOKS.saver && HOOKS.saver.start(), saver: () => HOOKS.saver && HOOKS.saver.start(),
+    color: rest => { const a = (rest[0] || '').toLowerCase(), ok = ['amber', 'teal', 'rose', 'ice', 'mono']; if (!ok.includes(a)) return print('usage: color amber | teal | rose | ice | mono', 'm'); HOOKS.setAccent(a); print(`accent set to ${a}.`, 'ok'); },
   };
   inp.addEventListener('keydown', e => {
+    if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Enter') SOUND.sfx('key');
     if (e.key !== 'Enter') return; const raw = inp.value; inp.value = ''; print(`<span class="ok">C:\\HALO&gt;</span> ${esc(raw)}`);
     const [c, ...rest] = raw.trim().split(/\s+/); const k = (c || '').toLowerCase(); if (!k) return;
     if (k === 'echo') return print(esc(rest.join(' ')));
-    if (k === 'start' && rest[0]) { const a = { 'launch.exe': 'launch', 'claim.exe': 'claim', 'coins.db': 'coins', 'readme.txt': 'readme', 'privacy.cpl': 'privacy' }[rest[0].toLowerCase()] || rest[0].toLowerCase(); return WM.open(a); }
-    (C[k] || (() => print(`'${esc(k)}' is not recognized as an internal or external command.`, 'm')))();
+    if (k === 'start' && rest[0]) { const a = { 'launch.exe': 'launch', 'claim.exe': 'claim', 'coins.db': 'coins', 'readme.txt': 'readme', 'privacy.cpl': 'privacy', 'paint.exe': 'paint', 'sweeper.exe': 'sweeper', 'display.cpl': 'display' }[rest[0].toLowerCase()] || rest[0].toLowerCase(); return WM.open(a); }
+    (C[k] || (() => print(`'${esc(k)}' is not recognized as an internal or external command.`, 'm')))(rest);
   });
 }
 // ================================================================ recycle bin

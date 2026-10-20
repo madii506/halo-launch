@@ -77,13 +77,13 @@ export function mountAscii(canvas, { onReady } = {}) {
   let mx = 0, my = 0, tx = 0, ty = 0;
   window.addEventListener('pointermove', e => { tx = (e.clientX / innerWidth - .5) * 2; ty = (e.clientY / innerHeight - .5) * 2; }, { passive: true });
   new ResizeObserver(() => layout()).observe(canvas);
-  let visible = true;
+  let visible = true, paused = false, off = false;
   new IntersectionObserver(es => { visible = es[0].isIntersecting; }, { threshold: 0 }).observe(canvas);
 
   const t0 = performance.now(); let last = 0, blink = 0, frames = 0, readyFired = false;
   function frame(now) {
     requestAnimationFrame(frame);
-    if (!visible || document.hidden || now - last < 33) return; last = now;
+    if (!visible || paused || off || document.hidden || now - last < 33) return; last = now;
     const t = (now - t0) / 1000;
     mx += (tx - mx) * .05; my += (ty - my) * .05;
     const az = Math.sin(t * .32) * .55 + mx * .35, el = .3 + my * .08 + Math.sin(t * .5) * .02, dist = 2.42;
@@ -118,5 +118,5 @@ export function mountAscii(canvas, { onReady } = {}) {
     }
   }
   requestAnimationFrame(frame);
-  return { layout };
+  return { layout, pause(v) { paused = !!v; }, show(v) { off = !v; if (off) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); } } };
 }

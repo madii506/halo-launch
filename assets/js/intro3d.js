@@ -15,7 +15,7 @@ const clamp01 = k => Math.max(0, Math.min(1, k));
 const ease = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
 const easeIn = k => k * k * k;
 const sine = k => .5 - Math.cos(Math.PI * k) / 2;
-const LAYERS = [['01', 'site', 'no trackers, no cookies'], ['02', 'connect', 'no wallet connect'], ['03', 'key', 'creator key born here'],
+const LAYERS = [['01', 'site', 'no trackers, no cookies'], ['02', 'connect', 'optional, never required'], ['03', 'key', 'creator key born here'],
   ['04', 'launcher', 'fresh wallet, every launch'], ['05', 'gas', 'claims paid by the treasury'], ['06', 'files', 'image metadata stripped']];
 const C = { ink: '#e9e1cb', ok: '#62f0c8', gold: '#f2b84b', dim: '#6f8a83', red: '#ff6b5b', white: '#ffffff' };
 
@@ -40,7 +40,7 @@ class Terminal {
     this.b = document.createElement('canvas'); this.b.width = this.W; this.b.height = this.H; this.bg = this.b.getContext('2d');
     this.t = new THREE.CanvasTexture(this.c); this.t.colorSpace = THREE.SRGBColorSpace; this.t.anisotropy = 4;
     this.lines = []; this.input = ''; this.prompt = false; this.logo = 0; this.power = 0; this.dirty = true; this.blink = true;
-    this.LH = 33; this.X = 54; this.Y = 50; this.max = 20; this.mode = 'term'; this.tunnel = 0; this.wobble = 0; this.flick = 0; this.glitch = 0; this.off = true;
+    this.LH = 38; this.X = 58; this.Y = 48; this.max = 18; this.mode = 'term'; this.tunnel = 0; this.wobble = 0; this.flick = 0; this.glitch = 0; this.off = true;
   }
   push(runs) { this.lines.push(runs); while (this.lines.length > this.max) this.lines.shift(); this.dirty = true; return this.lines.length - 1; }
   set(i, runs) { this.lines[i] = runs; this.dirty = true; }
@@ -70,7 +70,7 @@ class Terminal {
     let y = this.Y;
     const run = (runs, x0, yy) => { let x = x0; for (const [s, c] of runs) { g.fillStyle = c || C.ink; g.shadowColor = g.fillStyle; g.shadowBlur = 10; g.fillText(s, x, yy); x += g.measureText(s).width; } g.shadowBlur = 0; return x; };
     if (this.logo) {
-      const px = 19, rows = Array(9).fill('');
+      const px = 21, rows = Array(9).fill('');
       for (const ch of 'halo') GLYPHS[ch].forEach((row, i) => rows[i] += row + '..');
       const k = Math.min(1, this.logo), x0 = this.X + 6, y0 = y + 6;
       g.shadowColor = C.gold; g.shadowBlur = 22;
@@ -183,8 +183,6 @@ function build(scene, mobile) {
   for (let i = 0; i < sp.count; i++) { const x = sp.getX(i) / .3, y = sp.getY(i) / .225; sp.setZ(i, .016 * (1 - .5 * (x * x + y * y))); }
   sg.computeVertexNormals();
   const screen = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ map: term.t, toneMapped: false })); screen.position.set(0, .335, .118); mon.add(screen);
-  const note = tex(256, 256, (g) => { g.fillStyle = '#e9d36b'; g.fillRect(0, 0, 256, 256); g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(0, 0, 256, 18); g.fillStyle = '#2b3a8f'; g.font = 'italic 46px sans-serif'; g.fillText('no keys', 24, 110); g.fillText('no names', 24, 175); });
-  const nm = mesh(new THREE.PlaneGeometry(.11, .11), std({ map: note, roughness: .9 }), .355, .6, .124, mon); nm.rotation.z = -.12;
   // keyboard, with every key its own instance so typing can press it
   const kb = new THREE.Group(); kb.position.set(0, .018, .43); kb.rotation.x = .05; scene.add(kb);
   mesh(new RoundedBoxGeometry(.86, .03, .27, 3, .01), plastic, 0, 0, 0, kb);
@@ -231,10 +229,10 @@ function build(scene, mobile) {
 function shots(portrait) {
   const L = portrait ? [
     [V(1.0, 1.24, .95), V(1.18, 1.27, -.65)], [V(.96, 1.2, .8), V(1.16, 1.24, -.65)], [V(1.25, 1.06, 3.0), V(.42, .72, -.3)],
-    [V(-.78, .96, 3.1), V(-.02, .5, -.02)], [V(0, .8, 2.85), V(0, .46, .04)]]
+    [V(-.82, 1.0, 3.3), V(-.02, .5, -.02)], [V(0, .9, 3.35), V(0, .44, .02)]]
     : [
     [V(1.02, 1.24, .64), V(1.18, 1.27, -.65)], [V(.98, 1.2, .5), V(1.16, 1.24, -.65)], [V(1.18, 1.04, 2.1), V(.55, .7, -.3)],
-    [V(-.7, .9, 2.2), V(-.06, .5, -.05)], [V(.02, .66, 1.66), V(0, .57, .06)]];
+    [V(-.78, .92, 2.55), V(-.06, .5, -.05)], [V(.04, .84, 2.5), V(0, .5, .02)]];
   return { pos: new THREE.CatmullRomCurve3(L.map(a => a[0]), false, 'centripetal'), look: new THREE.CatmullRomCurve3(L.map(a => a[1]), false, 'centripetal'), end: L[L.length - 1] };
 }
 const SHOT_T = 13.4;   // seconds from the window to the ready shot
@@ -242,15 +240,15 @@ const SHOT_T = 13.4;   // seconds from the window to the ready shot
 // ---------------------------------------------------------------- run
 // Everything is timed against one clock and replayed from a queue, so a slow frame never stretches the film,
 // and skipping simply plays the rest of the queue at once.
-export async function run({ canvas, onEnter, onReady, mobile, status }) {
+export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   try { await Promise.race([document.fonts.load('34px VT'), new Promise(r => setTimeout(r, 1500))]); } catch {}
   const $ = s => document.querySelector(s);
   const intro = $('#intro'), cap = $('#icap'), skipBtn = $('#iskip');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  const dpr = Math.min(mobile ? 1.5 : 1.75, devicePixelRatio || 1);
+  const dpr = Math.min(mobile ? 1.3 : 1.5, devicePixelRatio || 1);
   renderer.setPixelRatio(dpr); renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
-  renderer.shadowMap.enabled = !mobile; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = !mobile; renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x05060a); scene.fog = new THREE.FogExp2(0x05060a, .08);
   const P = build(scene, mobile), term = P.term;
   const cam = new THREE.PerspectiveCamera(30, 1, .02, 40);
@@ -262,17 +260,20 @@ export async function run({ canvas, onEnter, onReady, mobile, status }) {
   let S = shots(portrait());
   function resize() {
     const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); composer.setSize(w, h);
-    bloom.resolution.set(w / 2, h / 2); cam.aspect = w / h; cam.fov = portrait() ? 46 : 31; cam.updateProjectionMatrix(); S = shots(portrait());
+    bloom.resolution.set(w / 3, h / 3); cam.aspect = w / h; cam.fov = portrait() ? 46 : 31; cam.updateProjectionMatrix(); S = shots(portrait());
   }
   resize(); addEventListener('resize', resize);
 
   const st = { t0: 0, phase: 'film', skip: false, blend: null, diveT: 0, cmd: '', done: false, pending: undefined, lamp: 0, lampT: -1, crtOn: false, bolt: [],
-    px: 0, py: 0, mx: 0, my: 0, pressed: [], look: null, posted: false, freeze: null, cap: null, capShown: -1, status: null };
+    px: 0, py: 0, mx: 0, my: 0, pressed: [], look: null, posted: false, freeze: null, cap: null, capShown: -1, status: null, hover: false, lean: 0, hddT: 0 };
+  const sfx = (n, a) => { try { audio && audio.sfx(n, a); } catch {} };
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(9, 9);
+  const onScreen = () => { ray.setFromCamera(ndc, cam); return ray.intersectObject(P.screen, false).length > 0; };
   let NOW = performance.now();
   Promise.resolve(status).then(s => { st.status = s; }).catch(() => {});
   const say = runs => term.push(Array.isArray(runs[0]) ? runs : [[runs[0], runs[1]]]);
-  const hdd = on => { P.hddMat.color.setHex(on ? 0xffb648 : 0x2a1c08); };
-  const lightning = (strength = 1) => { st.bolt.push([NOW, strength], [NOW + 140, strength * .6]); };
+  const hdd = on => { P.hddMat.color.setHex(on ? 0xffb648 : 0x2a1c08); if (on && NOW - st.hddT > 260) { st.hddT = NOW; sfx('hdd'); } };
+  const lightning = (strength = 1) => { st.bolt.push([NOW, strength], [NOW + 140, strength * .6]); sfx('thunder', strength); };
   const caption = text => { st.cap = text ? { text, ms: NOW } : null; st.capShown = -1; cap.textContent = ''; cap.classList.toggle('on', !!text); };
 
   // ---- the queue
@@ -283,19 +284,18 @@ export async function run({ canvas, onEnter, onReady, mobile, status }) {
   // the film: the window, the lamp, the power button
   ev(0, () => caption('23:58 · somewhere on the other side of the web'), true);
   ev(2300, () => lightning(1), true);
-  ev(5600, () => { st.lampT = NOW; });
-  ev(9300, () => caption('no wallet. no signature. no sol.'), true);
-  ev(6800, () => { st.crtOn = true; P.ledMat.color.setHex(0x3dff8a); P.monLed.color.setHex(0xffb648); term.off = false; term.power = 0; term.dirty = true; });
+  ev(5600, () => { st.lampT = NOW; sfx('click'); });
+  ev(6800, () => { sfx('power'); st.crtOn = true; P.ledMat.color.setHex(0x3dff8a); P.monLed.color.setHex(0xffb648); term.off = false; term.power = 0; term.dirty = true; });
   for (let i = 1; i <= 20; i++) ev(6800 + i * 23, () => { term.power = i / 20; term.dirty = true; });
   ev(6800 + 21 * 23, () => { term.power = 1; term.wobble = st.skip ? 0 : 1; term.dirty = true; });
   // the boot, one line at a time
   let T = 7780; const at = (d, fn) => { T += d; ev(T, fn); };
-  at(0, () => { hdd(true); say([['HALO BIOS v1.98  ', C.ink], ['(c) nobody', C.dim]]); });
+  at(0, () => { hdd(true); sfx('beep'); say([['HALO BIOS v1.98  ', C.ink], ['(c) nobody', C.dim]]); });
   at(170, () => say([['cpu: ', C.dim], ['anonymous @ 33 MHz', C.ink]]));
   let mi; at(130, () => { mi = term.push([['memory test: ', C.dim], ['0K', C.ok]]); });
   for (let m = 4096; m <= 65536; m += 4096) at(26, () => term.set(mi, [['memory test: ', C.dim], [m + 'K' + (m === 65536 ? ' ok' : ''), C.ok]]));
   at(60, () => { say(['', C.ink]); hdd(false); });
-  for (const [a, b, col] of [['detecting primary master', 'HALO-HD 0.8 GB', C.ink], ['detecting wallet connection', 'none', C.ok], ['detecting signature request', 'none', C.ok], ['detecting your name', 'not found', C.ok]]) {
+  for (const [a, b, col] of [['detecting primary master', 'HALO-HD 0.8 GB', C.ink], ['detecting trackers', 'none', C.ok], ['detecting your name', 'not found', C.ok]]) {
     const dots = '.'.repeat(Math.max(3, 30 - a.length)) + ' '; let i;
     at(90, () => { i = term.push([[a + ' ', C.ink], [dots, C.dim]]); hdd(true); });
     at(210, () => { term.set(i, [[a + ' ', C.ink], [dots, C.dim], [b, col]]); hdd(false); });
@@ -323,11 +323,6 @@ export async function run({ canvas, onEnter, onReady, mobile, status }) {
   at(120, () => term.set(tag2, [[T2, C.ink], ['real.', C.gold]]));
   at(420, () => {
     say(['', C.ink]);
-    const s = st.status;
-    if (s && s.ok) {
-      const left = Math.max(0, Math.min(s.cap - s.today, s.launchesLeft == null ? s.cap : s.launchesLeft));
-      say(s.ready ? [['● ', C.ok], ['launches open', C.ok], [` · ${left} of ${s.cap} free today · ${s.launched} launched`, C.dim]] : [['● ', C.gold], ['launches paused', C.gold], [s.why === 'cap' ? ' · back at 00:00 UTC' : ' · the treasury is refilling', C.dim]]);
-    }
     say([['type ', C.dim], ['launch', C.gold], [', ', C.dim], ['coins', C.gold], [', ', C.dim], ['claim', C.gold], [', ', C.dim], ['help', C.gold], [' or press enter.', C.dim]]);
     say(['', C.ink]);
     term.prompt = true; st.posted = true;
@@ -356,7 +351,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status }) {
     for (const r in ROWS) { const c = ROWS[r].indexOf(ch); if (c >= 0) return r + ':' + c; }
     return null;
   }
-  function press(k) { const id = keyCell(k); const i = id && (id === 'space' ? P.kidx.space : P.kidx[id]); if (i != null) st.pressed.push([i, NOW]); }
+  function press(k) { const id = keyCell(k); const i = id && (id === 'space' ? P.kidx.space : P.kidx[id]); if (i != null) st.pressed.push([i, NOW]); sfx('key'); }
 
   function command(raw) {
     const c = raw.trim().toLowerCase();
@@ -378,7 +373,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status }) {
     if (st.phase === 'dive' || st.done) return;
     if (st.phase !== 'ready') { st.pending = cmd; skip(); return; }
     st.freeze = null; st.phase = 'dive'; st.cmd = cmd; st.diveT = NOW; st.diveFrom = cam.position.clone(); st.diveLook = (st.look || S.end[1]).clone(); term.prompt = false;
-    say([['entering halo', C.gold], [' …', C.dim]]); hdd(true);
+    say([['entering halo', C.gold], [' …', C.dim]]); hdd(true); sfx('dive'); canvas.style.cursor = 'default';
     intro.classList.add('diving');
   }
   function key(e) {
@@ -392,9 +387,13 @@ export async function run({ canvas, onEnter, onReady, mobile, status }) {
     else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && term.input.length < 34) { term.input += e.key; term.dirty = true; }
   }
   addEventListener('keydown', key);
-  const pm = e => { st.px = e.clientX / innerWidth * 2 - 1; st.py = e.clientY / innerHeight * 2 - 1; };
+  const pm = e => { st.px = e.clientX / innerWidth * 2 - 1; st.py = e.clientY / innerHeight * 2 - 1; ndc.set(st.px, -st.py); };
   addEventListener('pointermove', pm, { passive: true });
-  canvas.addEventListener('click', () => { if (st.phase === 'ready') dive(''); else skip(); });
+  canvas.addEventListener('click', e => {             // in the film a click skips; once ready, pressing the screen pulls you in
+    ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight * 2 - 1));
+    if (st.phase === 'film') return skip();
+    if (st.phase === 'ready' && onScreen()) dive('');
+  });
   if (skipBtn) skipBtn.onclick = e => { e.stopPropagation(); skip(); };
 
   let last = performance.now(), started = false;
@@ -417,11 +416,14 @@ export async function run({ canvas, onEnter, onReady, mobile, status }) {
     if (st.phase === 'film' && st.posted && (u >= 1 || (st.blend && NOW - st.blend.t > 900))) ready();
     st.mx += (st.px - st.mx) * .04; st.my += (st.py - st.my) * .04;
     const settle = st.phase === 'film' && !st.skip ? clamp01((t - SHOT_T + 1.5) / 1.5) : 1;
+    if (st.phase === 'ready') { const h = onScreen(); if (h !== st.hover) { st.hover = h; canvas.style.cursor = h ? 'pointer' : 'default'; } }
+    st.lean += ((st.phase === 'ready' && st.hover ? 1 : 0) - st.lean) * .05;
     pos.x += Math.sin(t * .35) * .02 + st.mx * .05 * settle; pos.y += Math.sin(t * .5) * .01 - st.my * .025 * settle;
+    if (st.lean > .001) { pos.lerp(SCREEN_C, st.lean * .16); look.lerp(SCREEN_C, st.lean * .3); }
     if (st.phase === 'dive') {
-      const d = clamp01((NOW - st.diveT) / 1500), e = easeIn(d);
+      const d = clamp01((NOW - st.diveT) / 2000), e = easeIn(d);
       pos = st.diveFrom.clone().lerp(V(SCREEN_C.x, SCREEN_C.y, SCREEN_C.z + .16), e); look = st.diveLook.clone().lerp(SCREEN_C, Math.min(1, e * 2));
-      if (NOW - st.diveT > 380) { term.mode = 'tunnel'; term.tunnel = clamp01((NOW - st.diveT - 380) / 1100); }
+      if (NOW - st.diveT > 880) { term.mode = 'tunnel'; term.tunnel = clamp01((NOW - st.diveT - 880) / 1080); }
       bloom.strength = .62 + e * 2.2; renderer.toneMappingExposure = 1.05 + e * 1.6;
       if (d >= 1 && !st.done) { st.done = true; cleanup(); onEnter(st.cmd); return; }
     }
@@ -444,7 +446,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status }) {
     const screenLight = term.off ? 0 : term.power < 1 ? term.power * .5 : .2 + (term.mode === 'tunnel' ? term.tunnel * 2.5 : 0);
     P.glow.intensity += (screenLight + Math.sin(t * 13) * .015 - P.glow.intensity) * .2;
     P.dust.rotation.y += dt * .03; P.dust.position.y = Math.sin(t * .2) * .02;
-    P.steam.forEach(s => { const a = ((t * .22 + s.userData.o) % 1); s.position.set(-.8 + Math.sin(a * 6 + s.userData.o * 9) * .02, .2 + a * .34, .28 + Math.cos(a * 5) * .015); s.scale.setScalar(.035 + a * .08); s.material.opacity = Math.sin(a * Math.PI) * .07 * (.3 + st.lamp * .7); });
+    P.steam.forEach(s => { const a = ((t * .22 + s.userData.o) % 1); s.position.set(-.8 + Math.sin(a * 6 + s.userData.o * 9) * .02, .2 + a * .34, .28 + Math.cos(a * 5) * .015); s.scale.setScalar(.035 + a * .08); s.material.opacity = Math.sin(a * Math.PI) * .032 * (.3 + st.lamp * .7); });
     // pressed keys sink for a moment
     if (st.pressed.length) {
       st.pressed = st.pressed.filter(([i, t1]) => { const a = (NOW - t1) / 130; const m = P.base[i].clone(); if (a < 1) m.elements[13] -= .008 * Math.sin(a * Math.PI); P.keys.setMatrixAt(i, m); return a < 1; });
