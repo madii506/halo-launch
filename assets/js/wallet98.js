@@ -35,6 +35,14 @@ export async function signTx(bytes) {
   const o = Array.isArray(out) ? out[0] : out;
   return new Uint8Array(o.signedTransaction);
 }
+export async function signMessage(bytes) {
+  if (!CUR) throw new Error('Connect a wallet first.');
+  const f = CUR.wallet.features['solana:signMessage'];
+  if (!f) throw new Error('This wallet cannot sign a message here. Try Phantom, Solflare or Backpack.');
+  const out = await f.signMessage({ account: CUR.account, message: bytes });
+  const o = Array.isArray(out) ? out[0] : out;
+  return new Uint8Array(o.signature);
+}
 
 // ---- raw transaction bytes: [shortvec n][n × 64-byte signatures][message]
 function shortvec(b, i) { let len = 0, size = 0; for (;;) { const v = b[i + size]; len |= (v & 0x7f) << (size * 7); size++; if (!(v & 0x80)) break; } return [len, size]; }

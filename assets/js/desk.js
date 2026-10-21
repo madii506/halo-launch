@@ -2,7 +2,7 @@
 import { install } from './apps98.js?v=3';
 import { install as installTools } from './tools98.js?v=1';
 import { createSound } from './sound98.js?v=4';
-import * as WAL from './wallet98.js?v=1';
+import * as WAL from './wallet98.js?v=2';
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MOBILE = matchMedia('(max-width: 760px)').matches || matchMedia('(hover: none)').matches;
@@ -122,6 +122,7 @@ const WM = {
   },
   open(app, arg, fromEl) {
     if (app === 'x') { if (STATUS && STATUS.x) window.open(STATUS.x, '_blank', 'noopener,noreferrer'); return; }
+    if (app === 'ca') { window.open('https://pump.fun/coin/' + CA(), '_blank', 'noopener,noreferrer'); return; }
     const w = this.wins[app]; if (!w) return;
     closeMenus();
     const was = w.classList.contains('open');
@@ -295,6 +296,9 @@ function initDesk() {
   $('#balloon').onclick = e => { if (!e.target.closest('.bx')) WM.open('coins'); $('#balloon').hidden = true; };
   $('#welcomeShow').checked = ls.get('halo:nowelcome') !== '1';
   $('#welcomeShow').onchange = e => ls.set('halo:nowelcome', e.target.checked ? '0' : '1');
+  $('#welcomeCaCopy').onclick = () => copy(CA());
+  $('#trayCa').onclick = () => copy(CA());
+  showCa();
   wizard(); claimUi(); privacy(); readme(); cmd(); bin();
   $('#wizArt').textContent = WIZ_ART;
   $('#coinsRefresh').onclick = () => coins();
@@ -315,6 +319,9 @@ function initDesk() {
 // ================================================================ live data
 let STATUS = null, COINS = [], SEEN = null;
 const WHY = { treasury: 'free launches are paused right now. you can still launch with your own wallet.', cap: "today's free launches are used up. back at 00:00 UTC, or launch with your own wallet.", paused: 'launches are paused for a moment.', rpc: "solana can't be reached right now." };
+// $HALO's contract address: from the server when set there, otherwise the one the site launched with
+const CA = () => (STATUS && STATUS.ca) || 'PsFhzPzsJ1hj7sBrNbL2Tk6ZsSzqe61Z8oZNkpEpump';
+function showCa() { const ca = CA(); $('#welcomeCaCode').textContent = ca; $('#welcomeCaBuy').href = 'https://pump.fun/coin/' + ca; }
 async function status() {
   try { STATUS = await api('status'); } catch { STATUS = null; }
   const s = STATUS;
@@ -322,7 +329,7 @@ async function status() {
   const left = Math.max(0, Math.min(s.cap - s.today, s.launchesLeft == null ? s.cap : s.launchesLeft));
   $('#freeLeft').innerHTML = s.ready ? '<span class="teal">●</span> launches open' : `<span class="gold">●</span> ${esc(WHY[s.why] || 'launches are paused.')}`;
   $('#welcomeState').innerHTML = s.ready ? '<span class="dot live"></span><span>launches open</span>' : '<span class="dot off"></span><span>launches paused for now</span>';
-  $('#sysLive').innerHTML = `network: <b>${esc(s.network)}</b><br>launches: <b>${s.ready ? 'open' : 'paused'}</b>` + (s.ca ? `<br>$HALO: <b class="gold">${esc(s.ca)}</b>` : '');
+  $('#sysLive').innerHTML = `network: <b>${esc(s.network)}</b><br>launches: <b>${s.ready ? 'open' : 'paused'}</b><br>$HALO: <b class="gold">${esc(CA())}</b>`; showCa();
   $('#sysTre').textContent = `${s.network} · ${s.ready ? 'launches open' : 'launches paused'}`;
   if (s.x) $('#icX').hidden = false;
   syncLaunch();
@@ -648,6 +655,21 @@ function cmd() {
     launch: () => { print('starting launch.exe …', 'm'); WM.open('launch'); }, claim: () => { print('starting claim.exe …', 'm'); WM.open('claim'); },
     privacy: () => WM.open('privacy'), layers: () => WM.open('privacy'), readme: () => WM.open('readme'), docs: () => WM.open('readme'),
     strip: () => WM.open('strip'), scan: () => WM.open('scan'), cd: () => WM.open('cd'), music: () => WM.open('cd'), play: () => WM.open('cd'),
+    // owner only and not in help: send everything in the treasury back to the owner wallet, after it signs a message
+    sweep: async () => {
+      let cur = WAL.current();
+      if (!cur) { const ws = WAL.wallets(); if (!ws.length) return print('no solana wallet found in this browser. open the site in phantom, solflare or backpack.', 'm');
+        const i = ws.length === 1 ? 0 : await dialog('connect wallet', 'which wallet holds the owner address?', [...ws.map((w, k) => [esc(w.name), k === 0]), ['cancel', false]], 'cmd');
+        if (i < 0 || i >= ws.length) return print('cancelled.', 'm');
+        try { cur = await WAL.connect(ws[i]); } catch (e) { return print(esc((e && e.message) || 'the wallet did not connect.'), 'r'); } }
+      const msg = `halo · send the treasury to ${cur.address} · ${Date.now()}`;
+      print(`check your wallet: it asks ${esc(short(cur.address))} to sign one line. nothing is paid.`, 'm');
+      let sig; try { sig = await WAL.signMessage(new TextEncoder().encode(msg)); } catch (e) { return print(/reject|denied|cancel/i.test(String(e && e.message)) ? 'cancelled in your wallet.' : esc((e && e.message) || 'the wallet did not sign.'), 'r'); }
+      try { const r = await api('sweep', { method: 'POST', body: { message: msg, signer: cur.address, signature: b58(sig) } });
+        print(`sent ${Number(r.sol).toFixed(4)} SOL from the treasury to ${esc(short(cur.address))}.`, 'ok');
+        print(`<a class="lk" href="https://solscan.io/tx/${esc(r.sig)}" target="_blank" rel="noopener noreferrer">transaction ↗</a>`); status();
+      } catch (e) { print(esc(e.message), 'r'); }
+    },
     whoami: () => print('nobody', 'ok'), ver: () => print('halo [version 4.10.1998]'), date: () => print(new Date().toString()), time: () => print(new Date().toLocaleTimeString()),
     cls: () => { out.innerHTML = ''; }, clear: () => { out.innerHTML = ''; }, exit: () => WM.close('cmd'),
     dir: () => ['launch.exe', 'coins.db', 'claim.exe', 'paint.exe', 'sweeper.exe', 'privacy.cpl', 'display.cpl', 'readme.txt'].forEach(f => print(`10-20-98  12:00a    ${f}`)),
