@@ -57,7 +57,6 @@
     <button class="ic" data-open="scan" role="listitem"><img src="/assets/img/ico-scan.png" alt=""><span>scan.exe</span></button>
     <button class="ic" data-open="cd" role="listitem"><img src="/assets/img/ico-cd.png" alt=""><span>cd player</span></button>
     <button class="ic" data-open="bin" role="listitem"><img src="/assets/img/ico-bin.png" alt=""><span>recycle bin</span></button>
-    <button class="ic" data-open="ca" role="listitem"><img src="/assets/img/ico-coins.png" alt=""><span>$HALO.url</span></button>
     <button class="ic" data-open="x" role="listitem" id="icX" hidden><img src="/assets/img/ico-x.png" alt=""><span>halo on x.url</span></button>
   </div>
   <div class="lasso" id="sel"></div>
@@ -79,7 +78,6 @@
         <div class="wr">
           <div class="nos"><span>no wallet needed</span><span>no signature needed</span><span>no SOL needed</span></div>
           <div class="wstate" id="welcomeState"><span class="dot"></span><span>…</span></div>
-          <div class="wca" id="welcomeCa"><div class="wcat">$HALO <span>contract address</span></div><code id="welcomeCaCode">PsFhzPzsJ1hj7sBrNbL2Tk6ZsSzqe61Z8oZNkpEpump</code><div class="row"><button class="bt def" type="button" id="welcomeCaCopy">copy ca</button><a class="bt" id="welcomeCaBuy" href="https://pump.fun/coin/PsFhzPzsJ1hj7sBrNbL2Tk6ZsSzqe61Z8oZNkpEpump" target="_blank" rel="noopener noreferrer">pump.fun ↗</a></div></div>
           <label class="cb"><input type="checkbox" id="welcomeShow" checked> show this at startup</label>
         </div>
       </div>
@@ -393,7 +391,7 @@
     <button class="startbtn" id="startBtn" type="button" aria-expanded="false"><img src="/assets/img/ico-pc-16.png" alt="">start</button>
     <div class="ql" aria-label="quick launch"><button type="button" data-open="launch" data-tip="launch a coin"><img src="/assets/img/ico-launch-16.png" alt=""></button><button type="button" data-open="coins" data-tip="coins.db"><img src="/assets/img/ico-coins-16.png" alt=""></button><button type="button" data-open="paint" data-tip="paint"><img src="/assets/img/ico-paint-16.png" alt=""></button><button type="button" data-open="cmd" data-tip="command prompt"><img src="/assets/img/ico-cmd-16.png" alt=""></button></div>
     <div class="tasks" id="tasks"></div>
-    <div class="tray" id="tray"><button class="trayca" type="button" id="trayCa" data-tip="copy the $HALO contract address">$HALO</button><button class="snd" type="button" id="traySnd" data-tip="sound" aria-label="sound">♪</button><span class="clock" id="clock" data-tip="date and time">--:--</span></div>
+    <div class="tray" id="tray"><button class="snd" type="button" id="traySnd" data-tip="sound" aria-label="sound">♪</button><span class="clock" id="clock" data-tip="date and time">--:--</span></div>
   </footer>
 </div>
 
@@ -405,6 +403,6 @@
 <div class="zoomr" id="zoomr" aria-hidden="true"></div>
 
 <script src="/assets/js/vendor/nacl-fast.min.js"></script>
-<script type="module" src="/assets/js/desk.js?v=14"></script>
+<script type="module" src="/assets/js/desk.js?v=15"></script>
 </body>
 </html>
