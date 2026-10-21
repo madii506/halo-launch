@@ -460,3 +460,11 @@ body.saving .toast, body.saving .tip { display: none; }
   .cdtop { grid-template-columns: 1fr; } .cdled { flex-direction: row; justify-content: space-between; padding: 8px 12px; }
   .cdvol { margin-left: 0; width: 100%; } .cdvol input { flex: 1; }
 }
+
+/* $HALO contract address: welcome window, tray */
+.wca { margin-top: 16px; padding: 10px 12px; background: #0a0a0c; box-shadow: inset 1px 1px 0 var(--lo), inset -1px -1px 0 var(--hi); }
+.wcat { color: var(--gold); font-weight: 700; font-size: 13px; } .wcat span { color: var(--mute); font-weight: 400; font-size: 11px; margin-left: 6px; }
+.wca code { display: block; margin-top: 6px; font: 600 11.5px/1.4 var(--mono); color: var(--ink); word-break: break-all; user-select: all; -webkit-user-select: all; }
+.wca .row { margin-top: 8px; }
+.trayca { background: none; border: 0; color: var(--gold); font: 700 12px var(--mono); cursor: pointer; padding: 2px 4px; }
+.trayca:hover, .trayca:focus-visible { color: var(--gold2); text-decoration: underline; outline: 0; }
