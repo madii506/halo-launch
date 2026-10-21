@@ -122,7 +122,6 @@ const WM = {
   },
   open(app, arg, fromEl) {
     if (app === 'x') { if (STATUS && STATUS.x) window.open(STATUS.x, '_blank', 'noopener,noreferrer'); return; }
-    if (app === 'ca') { window.open('https://pump.fun/coin/' + CA(), '_blank', 'noopener,noreferrer'); return; }
     const w = this.wins[app]; if (!w) return;
     closeMenus();
     const was = w.classList.contains('open');
@@ -296,9 +295,6 @@ function initDesk() {
   $('#balloon').onclick = e => { if (!e.target.closest('.bx')) WM.open('coins'); $('#balloon').hidden = true; };
   $('#welcomeShow').checked = ls.get('halo:nowelcome') !== '1';
   $('#welcomeShow').onchange = e => ls.set('halo:nowelcome', e.target.checked ? '0' : '1');
-  $('#welcomeCaCopy').onclick = () => copy(CA());
-  $('#trayCa').onclick = () => copy(CA());
-  showCa();
   wizard(); claimUi(); privacy(); readme(); cmd(); bin();
   $('#wizArt').textContent = WIZ_ART;
   $('#coinsRefresh').onclick = () => coins();
@@ -319,9 +315,6 @@ function initDesk() {
 // ================================================================ live data
 let STATUS = null, COINS = [], SEEN = null;
 const WHY = { treasury: 'free launches are paused right now. you can still launch with your own wallet.', cap: "today's free launches are used up. back at 00:00 UTC, or launch with your own wallet.", paused: 'launches are paused for a moment.', rpc: "solana can't be reached right now." };
-// $HALO's contract address: from the server when set there, otherwise the one the site launched with
-const CA = () => (STATUS && STATUS.ca) || 'PsFhzPzsJ1hj7sBrNbL2Tk6ZsSzqe61Z8oZNkpEpump';
-function showCa() { const ca = CA(); $('#welcomeCaCode').textContent = ca; $('#welcomeCaBuy').href = 'https://pump.fun/coin/' + ca; }
 async function status() {
   try { STATUS = await api('status'); } catch { STATUS = null; }
   const s = STATUS;
@@ -329,7 +322,7 @@ async function status() {
   const left = Math.max(0, Math.min(s.cap - s.today, s.launchesLeft == null ? s.cap : s.launchesLeft));
   $('#freeLeft').innerHTML = s.ready ? '<span class="teal">●</span> launches open' : `<span class="gold">●</span> ${esc(WHY[s.why] || 'launches are paused.')}`;
   $('#welcomeState').innerHTML = s.ready ? '<span class="dot live"></span><span>launches open</span>' : '<span class="dot off"></span><span>launches paused for now</span>';
-  $('#sysLive').innerHTML = `network: <b>${esc(s.network)}</b><br>launches: <b>${s.ready ? 'open' : 'paused'}</b><br>$HALO: <b class="gold">${esc(CA())}</b>`; showCa();
+  $('#sysLive').innerHTML = `network: <b>${esc(s.network)}</b><br>launches: <b>${s.ready ? 'open' : 'paused'}</b>`;
   $('#sysTre').textContent = `${s.network} · ${s.ready ? 'launches open' : 'launches paused'}`;
   if (s.x) $('#icX').hidden = false;
   syncLaunch();
